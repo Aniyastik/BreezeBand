@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: #ffffff;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.nav-bar {
+    width: 100%;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    margin-bottom: 40px;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.nav-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active {
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.1);
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 40px;
+    width: 85%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.5s ease-out;
+    position: relative;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h2 {
+    margin-top: 0;
+    margin-bottom: 30px;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: -webkit-linear-gradient(#fff, #b3e5fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.input-group {
+    margin-bottom: 20px;
+    text-align: left;
+    position: relative;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+}
+
+.currency-suffix::after {
+    content: "AZN";
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 600;
+    font-size: 20px;
+    pointer-events: none;
+}
+
+input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 20px;
+    font-size: 20px;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.2);
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+input.large-amount {
+    font-size: 36px;
+    padding-right: 60px;
+}
+
+input:focus {
+    border-color: #00e676;
+    background: rgba(0, 0, 0, 0.3);
+    outline: none;
+    box-shadow: 0 0 15px rgba(0, 230, 118, 0.2);
+}
+
+.btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, #00e676, #00c853);
+    color: #ffffff;
+    border: none;
+    padding: 22px;
+    margin-top: 10px;
+    font-size: 20px;
+    font-weight: 800;
+    border-radius: 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: transform 0.1s, box-shadow 0.3s;
+    box-shadow: 0 10px 20px rgba(0, 200, 83, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 25px rgba(0, 200, 83, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 5px 10px rgba(0, 200, 83, 0.3);
+}
+
+.status-msg {
+    margin-top: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    min-height: 24px;
+    padding: 12px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.status-success { background: rgba(0, 230, 118, 0.1); color: #00e676; border: 1px solid rgba(0,230,118,0.3); }
+.status-error { background: rgba(255, 51, 102, 0.1); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+.status-waiting { background: rgba(255, 255, 255, 0.05); color: #b3e5fc; border: 1px solid rgba(179,229,252,0.3); animation: pulse 1.5s infinite; }
+
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+.pulse-circle {
+    width: 80px;
+    height: 80px;
+    background: rgba(0, 230, 118, 0.2);
+    border-radius: 50%;
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(0, 230, 118, 0.5);
+}
+.pulse-circle svg {
+    width: 40px;
+    height: 40px;
+    fill: #00e676;
+}
