@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 import redis
 import httpx
 import asyncio
+import os
 import random
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -52,7 +53,8 @@ app.include_router(bank_router)
 # Static files (POS terminal)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+r = redis.from_url(redis_url, decode_responses=True)
 
 
 @app.get("/")

@@ -3,11 +3,15 @@ from celery import Celery
 import models
 from database import get_db
 
+import os
+
+redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
 # Mövcud Redis konteynerimizdən həm broker, həm də neticə mərkəzi (backend) kimi istifadə edirik
 celery_app = Celery(
     "tasks",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0"
+    broker=redis_url,
+    backend=redis_url
 )
 
 @celery_app.task(name="worker.process_bank_settlement")
