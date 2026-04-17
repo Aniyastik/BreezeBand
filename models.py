@@ -13,6 +13,7 @@ class User(Base):
 
     # Əlaqələr
     wallet = relationship("Wallet", back_populates="owner", uselist=False)
+    bank_account = relationship("BankAccount", back_populates="owner", uselist=False)
 
 
 class Wallet(Base):
@@ -26,6 +27,17 @@ class Wallet(Base):
 
     owner = relationship("User", back_populates="wallet")
     transactions = relationship("Transaction", back_populates="wallet")
+
+
+class BankAccount(Base):
+    __tablename__ = "bank_accounts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    account_number = Column(String, unique=True, index=True)
+    balance = Column(Float, default=0.0) # Real bank balance
+    
+    owner = relationship("User", back_populates="bank_account")
 
 
 class Vendor(Base):
