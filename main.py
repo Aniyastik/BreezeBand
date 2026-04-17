@@ -294,6 +294,13 @@ react_dist_path = os.path.join(os.path.dirname(__file__), "frontend-react", "dis
 if os.path.exists(react_dist_path):
     app.mount("/assets", StaticFiles(directory=os.path.join(react_dist_path, "assets")), name="react-assets")
     
+    @app.get("/")
+    def serve_frontend_root():
+        index_file = os.path.join(react_dist_path, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        return {"status": "Frontend tapılmadı."}
+        
     @app.get("/{full_path:path}")
     def serve_frontend(full_path: str):
         # We don't want to block API routes or /pos, but since this is placed at the bottom,

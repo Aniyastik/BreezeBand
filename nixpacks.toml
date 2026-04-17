@@ -3,7 +3,6 @@
 # We just append nodejs to the environment so we can build the frontend.
 nixPkgs = ["...", "nodejs_20"]
 
-[phases.build_frontend]
-# Install npm packages and build the dist folder
-cmds = ["cd frontend-react && npm ci && npm run build"]
-dependsOn = ["install"]
+[phases.build]
+# Use "..." to retain any default python actions, then perform node compilation
+cmds = ["...", "cd frontend-react && npm install && npm run build"]
