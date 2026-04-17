@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE } from '../api'
 
 export default function Admin() {
   const [users, setUsers] = useState([])
@@ -7,7 +8,7 @@ export default function Admin() {
 
   const fetchDb = async () => {
       try {
-          const res = await fetch('/database_view')
+          const res = await fetch(`${API_BASE}/database_view`)
           if (res.ok) {
               const data = await res.json()
               setUsers(data)
@@ -27,7 +28,7 @@ export default function Admin() {
     setStatus({ msg: "Hesablaşma aparılır... Gözləyin", type: "status-waiting" })
     
     try {
-      const response = await fetch('/settle_day', { method: 'POST' })
+      const response = await fetch(`${API_BASE}/settle_day`, { method: 'POST' })
       const data = await response.json()
       
       if (response.ok) {

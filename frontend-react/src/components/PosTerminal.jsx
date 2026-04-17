@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { API_BASE } from '../api'
 
 export default function PosTerminal() {
   const [amount, setAmount] = useState('')
@@ -32,7 +33,7 @@ export default function PosTerminal() {
 
   const processPayment = async (uid, amt) => {
     try {
-      const response = await fetch('/pay', {
+      const response = await fetch(`${API_BASE}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

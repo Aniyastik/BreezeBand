@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { API_BASE } from '../api'
 
 export default function Registration() {
   const [userName, setUserName] = useState('')
@@ -35,7 +36,7 @@ export default function Registration() {
 
   const registerUserNFC = async (name, uid, bal) => {
     try {
-      const response = await fetch('/register_nfc', {
+      const response = await fetch(`${API_BASE}/register_nfc`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

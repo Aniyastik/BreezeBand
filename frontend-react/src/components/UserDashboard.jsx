@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { API_BASE } from '../api'
 
 export default function UserDashboard() {
   const [profile, setProfile] = useState(null)
@@ -27,11 +28,11 @@ export default function UserDashboard() {
 
   const fetchDashboardData = async (uid) => {
     try {
-      const profRes = await fetch(`/profile/${uid}`)
+      const profRes = await fetch(`${API_BASE}/profile/${uid}`)
       if (!profRes.ok) throw new Error("Profil tapılmadı")
       const profData = await profRes.json()
       
-      const histRes = await fetch(`/history/${uid}`)
+      const histRes = await fetch(`${API_BASE}/history/${uid}`)
       const histData = await histRes.json()
       
       setProfile(profData)
