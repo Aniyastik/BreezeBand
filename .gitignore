@@ -47,3 +47,7 @@ build/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Tunnels
+ngrok
+cloudflared

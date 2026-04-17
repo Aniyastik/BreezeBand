@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import redis
 import httpx
 import asyncio
@@ -48,12 +49,28 @@ app.add_middleware(
 # Bank router-ni əlavə edirik
 app.include_router(bank_router)
 
+# Static files (POS terminal)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 
 @app.get("/")
 def read_root():
     return {"status": "Mühərrik işləyir", "redis_ping": r.ping()}
+
+
+@app.get("/pos")
+def pos_terminal():
+    """Serve the POS terminal page for Android NFC payments."""
+    return FileResponse("static/pos.html")
+
+
+@app.get("/vendors")
+def list_vendors(db: Session = Depends(get_db)):
+    """List all vendors for the POS dropdown."""
+    vendors = db.query(models.Vendor).all()
+    return [{"id": v.id, "name": v.name, "virtual_balance": v.virtual_balance} for v in vendors]
 
 
 @app.get("/db-status")
