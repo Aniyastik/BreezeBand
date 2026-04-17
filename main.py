@@ -57,11 +57,6 @@ redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 r = redis.from_url(redis_url, decode_responses=True)
 
 
-@app.get("/")
-def read_root():
-    return {"status": "Mühərrik işləyir", "redis_ping": r.ping()}
-
-
 @app.get("/pos")
 def pos_terminal():
     """Serve the POS terminal page for Android NFC payments."""
@@ -291,3 +286,22 @@ def settle_day(db: Session = Depends(get_db)):
         "message": "Günün sonu hesablaşması bitdi!", 
         "total_settled": round(total_settled, 2)
     }
+
+
+import os
+
+react_dist_path = os.path.join(os.path.dirname(__file__), "frontend-react", "dist")
+if os.path.exists(react_dist_path):
+    app.mount("/assets", StaticFiles(directory=os.path.join(react_dist_path, "assets")), name="react-assets")
+    
+    @app.get("/{full_path:path}")
+    def serve_frontend(full_path: str):
+        # We don't want to block API routes or /pos, but since this is placed at the bottom,
+        # FastAPI only falls back here if no other route matched!
+        if full_path.startswith("api/") or full_path == "pos":
+            raise HTTPException(status_code=404, detail="API route not found")
+            
+        index_file = os.path.join(react_dist_path, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        return {"status": "Frontend tapilmadi."}
