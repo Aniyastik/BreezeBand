@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -49,6 +49,13 @@ app.add_middleware(
 
 # Bank router-ni əlavə edirik
 app.include_router(bank_router)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"Incoming request: {request.method} {request.url.path}")
+    response = await call_next(request)
+    print(f"Response status: {response.status_code}")
+    return response
 
 # Static files (POS terminal)
 app.mount("/static", StaticFiles(directory="static"), name="static")

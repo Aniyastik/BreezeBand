@@ -38,7 +38,7 @@ export default function Admin() {
         setStatus({ msg: `Xəta: ${data.detail}`, type: "status-error" })
       }
     } catch (error) {
-      setStatus({ msg: "Serverə qoşulmaq alınmadı.", type: "status-error" })
+      setStatus({ msg: "Serverə qoşulmaq alınmadı: " + error.message, type: "status-error" })
     } finally {
       setIsProcessing(false)
     }
