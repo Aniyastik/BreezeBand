@@ -65,14 +65,22 @@ export default function Registration() {
         })
       })
 
-      const data = await response.json()
+      let data;
+      const text = await response.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { detail: "Sistem xətası (Server boş cavab qaytardı)" };
+      }
 
       if (response.ok) {
         setStatus({ msg: `Uğurlu! Balans: ${data.balance} AZN`, type: "status-success" })
         setUserName('')
         setBalance('0')
+      } else if (response.status === 405) {
+        setStatus({ msg: "Xəta 405: Siz backend əvəzinə frontend (Railway) URL-ni daxil etmisiniz. Ayarlardan əsl FastAPI backend linkini yazın!", type: "status-error" });
       } else {
-        setStatus({ msg: `Xəta: ${data.detail}`, type: "status-error" })
+        setStatus({ msg: `Xəta: ${data.detail || 'Naməlum xəta'}`, type: "status-error" })
       }
     } catch (error) {
       setStatus({ msg: "Serverə qoşulmaq alınmadı: " + error.message, type: "status-error" })
