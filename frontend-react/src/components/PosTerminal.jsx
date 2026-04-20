@@ -4,6 +4,7 @@ import { API_BASE } from '../api'
 export default function PosTerminal() {
   const [amount, setAmount] = useState('')
   const [status, setStatus] = useState({ msg: 'Hazırdır', type: '' })
+  const [isScanning, setIsScanning] = useState(false)
 
   const handleScan = async () => {
     const amt = parseFloat(amount)
@@ -12,21 +13,30 @@ export default function PosTerminal() {
       return
     }
 
+    if (isScanning) return;
+
     try {
       if ('NDEFReader' in window) {
+        setIsScanning(true);
         const ndef = new window.NDEFReader()
         await ndef.scan()
         setStatus({ msg: "Qolbağı telefona yaxınlaşdırın...", type: "status-waiting" })
+
+        ndef.onreadingerror = () => {
+          setStatus({ msg: "Oxuma xətası. Yenidən cəhd edin.", type: "status-error" });
+        };
 
         ndef.onreading = async (event) => {
           const nfc_uid = event.serialNumber
           setStatus({ msg: "Oxunur... Zəhmət olmasa gözləyin", type: "status-waiting" })
           await processPayment(nfc_uid, amt)
+          setIsScanning(false);
         }
       } else {
         setStatus({ msg: "NFC dəstəklənmir. (Yalnız Android Chrome HTTPS)", type: "status-error" })
       }
     } catch (error) {
+      setIsScanning(false);
       setStatus({ msg: "NFC xətası: " + error.message, type: "status-error" })
     }
   }
@@ -75,7 +85,13 @@ export default function PosTerminal() {
           onChange={(e) => setAmount(e.target.value)}
         />
       </div>
-      <button className="btn-primary" onClick={handleScan}>Ödəniş Al</button>
+      <button 
+        className="btn-primary" 
+        onClick={handleScan}
+        disabled={isScanning}
+      >
+        {isScanning ? 'Skaner Aktivdir...' : 'Ödəniş Al'}
+      </button>
       {status.msg && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
     </div>
   )

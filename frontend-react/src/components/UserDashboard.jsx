@@ -5,23 +5,33 @@ export default function UserDashboard() {
   const [profile, setProfile] = useState(null)
   const [history, setHistory] = useState([])
   const [status, setStatus] = useState({ msg: 'Hesabınıza daxil olmaq üçün qolbağı oxudun', type: '' })
+  const [isScanning, setIsScanning] = useState(false)
 
   const handleScan = async () => {
+    if (isScanning) return;
+
     try {
       if ('NDEFReader' in window) {
+        setIsScanning(true);
         const ndef = new window.NDEFReader()
         await ndef.scan()
         setStatus({ msg: "Qolbağı telefona yaxınlaşdırın...", type: "status-waiting" })
+
+        ndef.onreadingerror = () => {
+          setStatus({ msg: "Oxuma xətası. Yenidən cəhd edin.", type: "status-error" });
+        };
 
         ndef.onreading = async (event) => {
           const nfc_uid = event.serialNumber
           setStatus({ msg: "Hesabınız yoxlanılır...", type: "status-waiting" })
           await fetchDashboardData(nfc_uid)
+          setIsScanning(false);
         }
       } else {
         setStatus({ msg: "NFC dəstəklənmir. (Yalnız Android Chrome HTTPS)", type: "status-error" })
       }
     } catch (error) {
+      setIsScanning(false);
       setStatus({ msg: "NFC xətası: " + error.message, type: "status-error" })
     }
   }
@@ -53,7 +63,13 @@ export default function UserDashboard() {
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
             </svg>
         </div>
-        <button className="btn-primary" onClick={handleScan}>Giriş (Qolbağı Oxut)</button>
+        <button 
+          className="btn-primary" 
+          onClick={handleScan}
+          disabled={isScanning}
+        >
+          {isScanning ? 'Skaner Aktivdir...' : 'Giriş (Qolbağı Oxut)'}
+        </button>
         {status.msg && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
       </div>
     )

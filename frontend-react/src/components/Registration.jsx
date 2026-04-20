@@ -5,7 +5,7 @@ export default function Registration() {
   const [userName, setUserName] = useState('')
   const [balance, setBalance] = useState('0')
   const [status, setStatus] = useState({ msg: 'Zəhmət olmasa məlumatları doldurun', type: '' })
-
+  const [isScanning, setIsScanning] = useState(false)
   const handleScan = async () => {
     const name = userName.trim()
     const initBalance = parseFloat(balance)
@@ -15,21 +15,30 @@ export default function Registration() {
       return
     }
 
+    if (isScanning) return;
+
     try {
       if ('NDEFReader' in window) {
+        setIsScanning(true);
         const ndef = new window.NDEFReader()
         await ndef.scan()
         setStatus({ msg: "Qolbağı telefona yaxınlaşdırın...", type: "status-waiting" })
+
+        ndef.onreadingerror = () => {
+          setStatus({ msg: "Oxuma xətası. Yenidən cəhd edin.", type: "status-error" });
+        };
 
         ndef.onreading = async (event) => {
           const nfc_uid = event.serialNumber
           setStatus({ msg: "Oxundu, qeydiyyat aparılır...", type: "status-waiting" })
           await registerUserNFC(name, nfc_uid, initBalance)
+          setIsScanning(false);
         }
       } else {
         setStatus({ msg: "NFC dəstəklənmir. (Yalnız Android Chrome HTTPS)", type: "status-error" })
       }
     } catch (error) {
+      setIsScanning(false);
       setStatus({ msg: "NFC xətası: " + error.message, type: "status-error" })
     }
   }
@@ -82,7 +91,13 @@ export default function Registration() {
           onChange={(e) => setBalance(e.target.value)}
         />
       </div>
-      <button className="btn-primary" onClick={handleScan}>Stikeri Oxut və Qeyd Et</button>
+      <button 
+        className="btn-primary" 
+        onClick={handleScan}
+        disabled={isScanning}
+      >
+        {isScanning ? 'Skaner Aktivdir...' : 'Stikeri Oxut və Qeyd Et'}
+      </button>
       {status.msg && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
     </div>
   )
