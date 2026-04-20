@@ -28,11 +28,21 @@ export default function Registration() {
           setStatus({ msg: "Oxuma xətası. Yenidən cəhd edin.", type: "status-error" });
         };
 
+        // Bircə dəfə oxumaq üçün flag
+        let hasRead = false;
+
         ndef.onreading = async (event) => {
-          const nfc_uid = event.serialNumber
-          setStatus({ msg: "Oxundu, qeydiyyat aparılır...", type: "status-waiting" })
-          await registerUserNFC(name, nfc_uid, initBalance)
-          setIsScanning(false);
+          if (hasRead) return;
+          hasRead = true;
+          
+          const nfc_uid = event.serialNumber;
+          setStatus({ msg: "Oxundu, qeydiyyat aparılır...", type: "status-waiting" });
+          
+          try {
+            await registerUserNFC(name, nfc_uid, initBalance);
+          } finally {
+            setIsScanning(false);
+          }
         }
       } else {
         setStatus({ msg: "NFC dəstəklənmir. (Yalnız Android Chrome HTTPS)", type: "status-error" })

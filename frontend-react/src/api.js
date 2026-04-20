@@ -10,6 +10,13 @@ export const API_BASE = base.replace(/\/+$/, '');
 
 export const setBackendUrl = (url) => {
     const cleanUrl = (url || '').trim().replace(/\/+$/, '');
+    
+    // Vercel URL-ni backend kimi istifadə etməyin qarşısını alırıq
+    if (cleanUrl.includes('vercel.app')) {
+        alert("Xəta: Siz backend əvəzinə frontend (Vercel) URL-ni daxil etdiniz! Zəhmət olmasa Render, Railway və ya lokal backend URL-ni daxil edin.");
+        return;
+    }
+    
     localStorage.setItem('backend_url', cleanUrl);
     window.location.reload();
 };

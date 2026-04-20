@@ -26,11 +26,21 @@ export default function PosTerminal() {
           setStatus({ msg: "Oxuma xətası. Yenidən cəhd edin.", type: "status-error" });
         };
 
+        // Bircə dəfə oxumaq üçün flag
+        let hasRead = false;
+
         ndef.onreading = async (event) => {
-          const nfc_uid = event.serialNumber
-          setStatus({ msg: "Oxunur... Zəhmət olmasa gözləyin", type: "status-waiting" })
-          await processPayment(nfc_uid, amt)
-          setIsScanning(false);
+          if (hasRead) return;
+          hasRead = true;
+
+          const nfc_uid = event.serialNumber;
+          setStatus({ msg: "Oxunur... Zəhmət olmasa gözləyin", type: "status-waiting" });
+          
+          try {
+            await processPayment(nfc_uid, amt);
+          } finally {
+            setIsScanning(false);
+          }
         }
       } else {
         setStatus({ msg: "NFC dəstəklənmir. (Yalnız Android Chrome HTTPS)", type: "status-error" })
