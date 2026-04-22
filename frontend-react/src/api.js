@@ -3,7 +3,7 @@ const savedUrl = typeof window !== 'undefined' ? localStorage.getItem('backend_u
 
 let base = savedUrl || (window.location.port === '5173' 
     ? `http://${window.location.hostname}:8000` 
-    : '');
+    : 'https://breezeband-production.up.railway.app');
 
 // Strip trailing slash to avoid double-slash (//) which causes FastAPI to return 405
 export const API_BASE = base.replace(/\/+$/, '');
