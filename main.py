@@ -295,39 +295,6 @@ def settle_day(db: Session = Depends(get_db)):
     }
 
 
-import os
-
-react_dist_path = os.path.join(os.path.dirname(__file__), "frontend-react", "dist")
-
-if os.path.exists(react_dist_path):
-    app.mount("/assets", StaticFiles(directory=os.path.join(react_dist_path, "assets")), name="react-assets")
-
 @app.get("/")
-def serve_frontend_root():
-    index_file = os.path.join(react_dist_path, "index.html")
-    if os.path.exists(index_file):
-        return FileResponse(index_file)
-    
-    # Return debug info if it fails
-    try:
-        app_files = os.listdir(os.path.dirname(__file__))
-        react_files = os.listdir(os.path.join(os.path.dirname(__file__), "frontend-react"))
-        return {
-            "status": "Frontend tapilmadi. Debug info:",
-            "app_dir": app_files,
-            "react_dir": react_files,
-            "expected_dist": react_dist_path
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/{full_path:path}")
-def serve_frontend(full_path: str):
-    if full_path.startswith("api/") or full_path == "pos":
-        raise HTTPException(status_code=404, detail="API route not found")
-        
-    index_file = os.path.join(react_dist_path, "index.html")
-    if os.path.exists(index_file):
-        return FileResponse(index_file)
-        
-    return {"status": "Frontend tapilmadi (catch-all)."}
+def read_root():
+    return {"status": "Mühərrik işləyir", "redis_ping": r.ping()}
