@@ -18,8 +18,16 @@ from database import engine, get_db
 from bank_mock import router as bank_router
 from worker import process_bank_settlement
 
+from sqlalchemy import text
+
 models.Base.metadata.create_all(bind=engine)
 
+# Sadə migrasiya: is_admin sütunu yoxdursa əlavə et
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;"))
+except Exception as e:
+    print(f"Migrasiya xətası (göz ardı edilə bilər): {e}")
 app = FastAPI(title="Sea Breeze Mini-Economy Engine")
 
 async def run_daily_settlement():
