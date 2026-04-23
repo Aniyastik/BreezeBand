@@ -6,6 +6,18 @@ export default function UserDashboard() {
   const [history, setHistory] = useState([])
   const [status, setStatus] = useState({ msg: 'Hesabınıza daxil olmaq üçün qolbağı oxudun', type: '' })
   const [isScanning, setIsScanning] = useState(false)
+  const [manualUid, setManualUid] = useState('')
+
+  const handleManualSubmit = async () => {
+    const uid = manualUid.trim()
+    if (!uid) {
+      setStatus({ msg: "NFC ID daxil edin", type: "status-error" })
+      return
+    }
+    
+    setStatus({ msg: "Hesabınız yoxlanılır...", type: "status-waiting" });
+    await fetchDashboardData(uid);
+  }
 
   const handleScan = async () => {
     if (isScanning) return;
@@ -63,6 +75,21 @@ export default function UserDashboard() {
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
             </svg>
         </div>
+        <div className="input-group" style={{ textAlign: 'left', marginBottom: '20px' }}>
+          <label>Manual NFC ID (Alternativ giriş)</label>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <input 
+              type="text" 
+              placeholder="Məs: A1-B2" 
+              value={manualUid}
+              onChange={(e) => setManualUid(e.target.value)}
+            />
+            <button className="btn-primary" style={{ width: 'auto', padding: '0 20px' }} onClick={handleManualSubmit}>Giriş</button>
+          </div>
+        </div>
+        
+        <div style={{ textAlign: 'center', margin: '15px 0', opacity: 0.5 }}>- VƏ YA -</div>
+
         <button 
           className="btn-primary" 
           onClick={handleScan}

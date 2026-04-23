@@ -5,6 +5,24 @@ export default function PosTerminal() {
   const [amount, setAmount] = useState('')
   const [status, setStatus] = useState({ msg: 'Hazırdır', type: '' })
   const [isScanning, setIsScanning] = useState(false)
+  const [manualUid, setManualUid] = useState('')
+
+  const handleManualSubmit = async () => {
+    const amt = parseFloat(amount)
+    const uid = manualUid.trim()
+
+    if (!amt || amt <= 0) {
+      setStatus({ msg: "Məbləği düzgün daxil edin", type: "status-error" })
+      return
+    }
+    if (!uid) {
+      setStatus({ msg: "NFC ID daxil edin", type: "status-error" })
+      return
+    }
+    
+    setStatus({ msg: "Gözləyin...", type: "status-waiting" });
+    await processPayment(uid, amt);
+  }
 
   const handleScan = async () => {
     const amt = parseFloat(amount)
@@ -103,6 +121,21 @@ export default function PosTerminal() {
           onChange={(e) => setAmount(e.target.value)}
         />
       </div>
+      <div className="input-group">
+        <label>Manual NFC ID</label>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input 
+            type="text" 
+            placeholder="Məs: A1-B2" 
+            value={manualUid}
+            onChange={(e) => setManualUid(e.target.value)}
+          />
+          <button className="btn-primary" style={{ width: 'auto', padding: '0 20px' }} onClick={handleManualSubmit}>Təsdiq</button>
+        </div>
+      </div>
+      
+      <div style={{ textAlign: 'center', margin: '15px 0', opacity: 0.5 }}>- VƏ YA -</div>
+
       <button 
         className="btn-primary" 
         onClick={handleScan}

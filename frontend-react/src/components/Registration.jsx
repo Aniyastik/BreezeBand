@@ -6,6 +6,22 @@ export default function Registration() {
   const [balance, setBalance] = useState('0')
   const [status, setStatus] = useState({ msg: 'Zəhmət olmasa məlumatları doldurun', type: '' })
   const [isScanning, setIsScanning] = useState(false)
+  const [manualUid, setManualUid] = useState('')
+
+  const handleManualSubmit = async () => {
+    const name = userName.trim()
+    const initBalance = parseFloat(balance)
+    const uid = manualUid.trim()
+
+    if (!name || !uid) {
+      setStatus({ msg: "İstifadəçi adı və NFC ID daxil edilməlidir!", type: "status-error" })
+      return
+    }
+    
+    setStatus({ msg: "Gözləyin...", type: "status-waiting" });
+    await registerUserNFC(name, uid, initBalance);
+  }
+
   const handleScan = async () => {
     const name = userName.trim()
     const initBalance = parseFloat(balance)
@@ -109,6 +125,21 @@ export default function Registration() {
           onChange={(e) => setBalance(e.target.value)}
         />
       </div>
+      <div className="input-group">
+        <label>Manual NFC ID (Qolbaq işləmirsə)</label>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input 
+            type="text" 
+            placeholder="Məs: A1-B2-C3-D4" 
+            value={manualUid}
+            onChange={(e) => setManualUid(e.target.value)}
+          />
+          <button className="btn-primary" style={{ width: 'auto', padding: '0 20px' }} onClick={handleManualSubmit}>Təsdiq</button>
+        </div>
+      </div>
+      
+      <div style={{ textAlign: 'center', margin: '15px 0', opacity: 0.5 }}>- VƏ YA -</div>
+
       <button 
         className="btn-primary" 
         onClick={handleScan}
