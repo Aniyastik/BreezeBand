@@ -333,8 +333,9 @@ def settle_day(admin: models.User = Depends(get_current_admin), db: Session = De
             
         # Bank API-nə toplu (batch) sorğu göndəririk
         try:
+            port = os.environ.get("PORT", 8000)
             response = httpx.post(
-                "http://127.0.0.1:8000/bank/charge", 
+                f"http://127.0.0.1:{port}/bank/charge", 
                 json={"nfc_uid": wallet.nfc_uid, "amount": amount},
                 timeout=10.0
             )

@@ -43,8 +43,9 @@ def process_bank_settlement(nfc_uid: str, vendor_id: int, amount: float):
         db.close()
 
     # 2. Bankın API-nə müraciət edirik
+    port = os.environ.get("PORT", 8000)
     response = httpx.post(
-        "http://127.0.0.1:8000/bank/charge", 
+        f"http://127.0.0.1:{port}/bank/charge", 
         json={"nfc_uid": nfc_uid, "amount": amount},
         timeout=10.0
     )
