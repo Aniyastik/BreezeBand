@@ -113,6 +113,9 @@ def seed_database(db: Session = Depends(get_db)):
 
 @app.post("/register_nfc")
 def register_nfc(data: schemas.RegistrationCreate, db: Session = Depends(get_db)):
+    # NFC ID-ni lowercase edirik (case mismatch problemini həll edir)
+    nfc_uid = data.nfc_uid.lower().strip()
+    
     # Yoxlayaq istifadəçi varmı
     user = db.query(models.User).filter(models.User.name == data.user_name).first()
     if not user:
@@ -131,21 +134,21 @@ def register_nfc(data: schemas.RegistrationCreate, db: Session = Depends(get_db)
         db.commit()
     
     # Qolbaq varmı
-    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == data.nfc_uid).first()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
     if wallet:
         if wallet.user_id != user.id:
             raise HTTPException(status_code=400, detail="Bu qolbaq başqa istifadəçiyə aiddir!")
         # Balansı artır
         wallet.balance += data.initial_balance
     else:
-        wallet = models.Wallet(user_id=user.id, nfc_uid=data.nfc_uid, balance=data.initial_balance)
+        wallet = models.Wallet(user_id=user.id, nfc_uid=nfc_uid, balance=data.initial_balance)
         db.add(wallet)
     
     db.commit()
     db.refresh(wallet)
     
     # Redis-i yenilə
-    r.set(f"wallet:{data.nfc_uid}:balance", wallet.balance)
+    r.set(f"wallet:{nfc_uid}:balance", wallet.balance)
     
     return {"status": "success", "message": "Qolbaq qeydiyyata alındı!", "balance": wallet.balance}
 
@@ -154,13 +157,15 @@ def register_nfc(data: schemas.RegistrationCreate, db: Session = Depends(get_db)
 # ==============================================================================
 @app.post("/pay", response_model=schemas.TransactionResponse)
 def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(get_db)):
-    redis_key = f"wallet:{payment.nfc_uid}:balance"
+    # NFC ID-ni lowercase edirik
+    nfc_uid = payment.nfc_uid.lower().strip()
+    redis_key = f"wallet:{nfc_uid}:balance"
     
     current_balance = r.get(redis_key)
     
     # Redis-də yoxdursa, PostgreSQL-dən yoxla və Redis-ə cache et
     if current_balance is None:
-        wallet_check = db.query(models.Wallet).filter(models.Wallet.nfc_uid == payment.nfc_uid).first()
+        wallet_check = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
         if wallet_check is None:
             raise HTTPException(status_code=404, detail="Qolbaq tapılmadı və ya balans aktivləşdirilməyib")
         # Redis-ə cache edirik ki, növbəti dəfə sürətli olsun
@@ -175,7 +180,7 @@ def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(ge
     new_balance = r.incrbyfloat(redis_key, -payment.amount)
     
     # Baza əməliyyatları
-    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == payment.nfc_uid).first()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
     vendor = db.query(models.Vendor).filter(models.Vendor.id == payment.vendor_id).first()
     
     if wallet and vendor:
@@ -222,6 +227,7 @@ def get_database_view(db: Session = Depends(get_db)):
 
 @app.get("/profile/{nfc_uid}")
 def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
+    nfc_uid = nfc_uid.lower().strip()
     wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Qolbaq tapılmadı")
@@ -239,6 +245,7 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
 
 @app.get("/history/{nfc_uid}")
 def get_history(nfc_uid: str, db: Session = Depends(get_db)):
+    nfc_uid = nfc_uid.lower().strip()
     wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Qolbaq tapılmadı")
