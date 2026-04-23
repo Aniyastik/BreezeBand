@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -68,6 +68,17 @@ if os.path.exists(os.path.join(frontend_dist, "assets")):
 redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 r = redis.from_url(redis_url, decode_responses=True)
 
+def get_current_admin(x_admin_uid: str = Header(None), db: Session = Depends(get_db)):
+    if not x_admin_uid:
+        raise HTTPException(status_code=403, detail="Admin Header is missing")
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == x_admin_uid.lower().strip()).first()
+    if not wallet:
+        raise HTTPException(status_code=403, detail="Admin wallet not found")
+    user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="Forbidden: Admin privileges required")
+    return user
+
 
 @app.get("/pos")
 def pos_terminal():
@@ -93,9 +104,12 @@ def seed_database(db: Session = Depends(get_db)):
     # Baza əvvəllər toxumlanıbsa xəta verməməsi üçün sadə yoxlama
     existing_user = db.query(models.User).filter(models.User.name == "Aniya").first()
     if existing_user:
+        if not existing_user.is_admin:
+            existing_user.is_admin = True
+            db.commit()
         return {"status": "Toxumlar artıq əkilib!", "balance": r.get('wallet:A1-B2-C3-D4:balance')}
 
-    user = models.User(name="Aniya")
+    user = models.User(name="Aniya", is_admin=True)
     db.add(user)
     db.commit()
     
@@ -208,7 +222,7 @@ def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(ge
     }
 
 @app.get("/database_view")
-def get_database_view(db: Session = Depends(get_db)):
+def get_database_view(admin: models.User = Depends(get_current_admin), db: Session = Depends(get_db)):
     users = db.query(models.User).all()
     result = []
     for u in users:
@@ -225,6 +239,26 @@ def get_database_view(db: Session = Depends(get_db)):
         })
     return result
 
+@app.get("/api/users/by-nfc/{uid}")
+def get_user_by_nfc(uid: str, admin: models.User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    uid = uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Qolbaq tapılmadı")
+    
+    user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
+    bank = db.query(models.BankAccount).filter(models.BankAccount.user_id == wallet.user_id).first()
+    
+    return {
+        "user_id": user.id,
+        "name": user.name,
+        "nfc_uid": uid,
+        "wallet_balance": wallet.balance,
+        "bank_account": bank.account_number if bank else "Yoxdur",
+        "bank_balance": bank.balance if bank else 0.0,
+        "is_admin": user.is_admin
+    }
+
 @app.get("/profile/{nfc_uid}")
 def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
     nfc_uid = nfc_uid.lower().strip()
@@ -240,7 +274,8 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
         "nfc_uid": nfc_uid,
         "wallet_balance": wallet.balance,
         "bank_account": bank.account_number if bank else "Yoxdur",
-        "bank_balance": bank.balance if bank else 0.0
+        "bank_balance": bank.balance if bank else 0.0,
+        "is_admin": user.is_admin
     }
 
 @app.get("/history/{nfc_uid}")
@@ -265,7 +300,7 @@ def get_history(nfc_uid: str, db: Session = Depends(get_db)):
     return result
 
 @app.post("/settle_day", response_model=schemas.SettlementResponse)
-def settle_day(db: Session = Depends(get_db)):
+def settle_day(admin: models.User = Depends(get_current_admin), db: Session = Depends(get_db)):
     # Bütün pending_settlement tranzaksiyaları tapırıq
     pending_txs = db.query(models.Transaction).filter(models.Transaction.status == "pending_settlement").all()
     

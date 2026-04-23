@@ -1,39 +1,52 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { API_BASE } from '../api'
 
-export default function Admin() {
-  const [users, setUsers] = useState([])
-  const [status, setStatus] = useState({ msg: 'Məlumatlar yüklənir...', type: 'status-waiting' })
+export default function Admin({ adminUid }) {
+  const [user, setUser] = useState(null)
+  const [searchUid, setSearchUid] = useState('')
+  const [status, setStatus] = useState({ msg: '', type: '' })
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const fetchDb = async () => {
-      try {
-          const res = await fetch(`${API_BASE}/database_view`)
-          if (res.ok) {
-              const data = await res.json()
-              setUsers(data)
-              setStatus({msg: '', type: ''})
-          }
-      } catch (err) {
-          setStatus({msg: 'Baza ilə əlaqə kəsildi', type: 'status-error'})
-      }
-  }
+  const handleSearch = async () => {
+    const uid = searchUid.trim()
+    if (!uid) {
+      setStatus({ msg: "NFC ID daxil edin", type: "status-error" })
+      return
+    }
 
-  useEffect(() => {
-      fetchDb()
-  }, [])
+    setStatus({ msg: "Axtarılır...", type: "status-waiting" })
+    try {
+      const res = await fetch(`${API_BASE}/api/users/by-nfc/${uid}`, {
+        headers: { 'X-Admin-UID': adminUid }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data)
+        setStatus({ msg: '', type: '' })
+      } else {
+        const err = await res.json()
+        setStatus({ msg: `Xəta: ${err.detail}`, type: "status-error" })
+        setUser(null)
+      }
+    } catch (err) {
+      setStatus({ msg: 'Baza ilə əlaqə kəsildi', type: "status-error" })
+      setUser(null)
+    }
+  }
 
   const handleSettle = async () => {
     setIsProcessing(true)
     setStatus({ msg: "Hesablaşma aparılır... Gözləyin", type: "status-waiting" })
     
     try {
-      const response = await fetch(`${API_BASE}/settle_day`, { method: 'POST' })
+      const response = await fetch(`${API_BASE}/settle_day`, { 
+        method: 'POST',
+        headers: { 'X-Admin-UID': adminUid }
+      })
       const data = await response.json()
       
       if (response.ok) {
         setStatus({ msg: `Uğurlu! ${data.message} Çəkilən məbləğ: ${data.total_settled} AZN`, type: "status-success" })
-        fetchDb() // Update table
       } else {
         setStatus({ msg: `Xəta: ${data.detail}`, type: "status-error" })
       }
@@ -45,56 +58,68 @@ export default function Admin() {
   }
 
   return (
-    <div className="glass-card" style={{ maxWidth: '800px', width: '100%' }}>
-      <h2>Admin / Baza Paneli</h2>
+    <div className="brutalist-card max-w-lg">
+      <h2 className="title-block">Admin Dashboard</h2>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, textAlign: 'left', maxWidth: '60%' }}>
-            Sistem avtomatik olaraq hər 2 dəqiqədən bir gün sonunu edir. Ancaq istəsəniz, aşağıdakı düymə ilə manual da edə bilərsiniz.
+      <div className="admin-controls mb-xl">
+          <p className="text-muted mb-md text-sm">
+            Sistem avtomatik olaraq hər 2 dəqiqədən bir gün sonunu edir.
           </p>
           <button 
-            className="btn-primary" 
+            className="btn-primary w-full" 
             onClick={handleSettle}
             disabled={isProcessing}
-            style={{ 
-                margin: 0,
-                width: 'auto',
-                padding: '12px 24px',
-                background: isProcessing ? 'gray' : 'linear-gradient(135deg, #fbc02d, #f57f17)',
-                boxShadow: isProcessing ? 'none' : '0 10px 20px rgba(245, 127, 23, 0.3)'
-            }}
           >
             {isProcessing ? 'Gözləyin...' : 'Manual Hesablaşma'}
           </button>
       </div>
 
-      {status.msg && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
+      <div className="divider-thick mb-xl"></div>
 
-      <div style={{ overflowX: 'auto', marginTop: '30px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
-              <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.1)' }}>
-                      <th style={{ padding: '15px' }}>Ad</th>
-                      <th style={{ padding: '15px' }}>NFC ID</th>
-                      <th style={{ padding: '15px' }}>Qolbaq Balansı</th>
-                      <th style={{ padding: '15px' }}>Bank Kartı</th>
-                      <th style={{ padding: '15px' }}>Real Bank Balansı</th>
-                  </tr>
-              </thead>
-              <tbody>
-                  {users.map(u => (
-                      <tr key={u.user_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <td style={{ padding: '15px', fontWeight: 'bold' }}>{u.name}</td>
-                          <td style={{ padding: '15px', color: '#b3e5fc' }}>{u.nfc_uid}</td>
-                          <td style={{ padding: '15px', color: '#00e676', fontWeight: 'bold' }}>{u.wallet_balance} AZN</td>
-                          <td style={{ padding: '15px', fontSize: '12px' }}>{u.bank_account}</td>
-                          <td style={{ padding: '15px', fontWeight: 'bold' }}>{u.bank_balance} AZN</td>
-                      </tr>
-                  ))}
-              </tbody>
-          </table>
+      <h3 className="section-title">İstifadəçi Axtarışı</h3>
+      <div className="input-group mb-lg">
+        <div className="flex-row gap-md">
+          <input 
+            type="text" 
+            className="brutalist-input"
+            placeholder="NFC ID (Məs: A1-B2)" 
+            value={searchUid}
+            onChange={(e) => setSearchUid(e.target.value)}
+          />
+          <button className="btn-secondary whitespace-nowrap" onClick={handleSearch}>Axtar</button>
+        </div>
       </div>
-      
+
+      {status.msg && <div className={`status-msg ${status.type} mb-md`}>{status.msg}</div>}
+
+      {user && (
+        <div className="user-details-panel">
+            <div className="detail-row">
+              <span className="detail-label">Ad:</span>
+              <span className="detail-value font-bold">{user.name}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">NFC ID:</span>
+              <span className="detail-value neon-text">{user.nfc_uid}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">İcazə:</span>
+              <span className={`detail-value ${user.is_admin ? 'text-success' : 'text-muted'}`}>{user.is_admin ? 'Admin' : 'İstifadəçi'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Qolbaq Balansı:</span>
+              <span className="detail-value text-success font-bold">{user.wallet_balance} AZN</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Bank Kartı:</span>
+              <span className="detail-value text-xs">{user.bank_account}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Real Bank Balansı:</span>
+              <span className="detail-value font-bold">{user.bank_balance} AZN</span>
+            </div>
+        </div>
+      )}
     </div>
   )
 }

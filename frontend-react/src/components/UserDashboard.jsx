@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { API_BASE } from '../api'
 
-export default function UserDashboard() {
+export default function UserDashboard({ setIsAdmin, setUid }) {
   const [profile, setProfile] = useState(null)
   const [history, setHistory] = useState([])
   const [status, setStatus] = useState({ msg: 'Hesabınıza daxil olmaq üçün qolbağı oxudun', type: '' })
@@ -60,85 +60,88 @@ export default function UserDashboard() {
       setProfile(profData)
       setHistory(histData)
       setStatus({ msg: "", type: "" })
+      
+      localStorage.setItem('userUid', uid)
+      localStorage.setItem('isAdmin', profData.is_admin ? 'true' : 'false')
+      setUid(uid)
+      setIsAdmin(profData.is_admin)
     } catch (error) {
       setStatus({ msg: "Xəta: " + error.message, type: "status-error" })
       setProfile(null)
     }
   }
 
+  const handleLogout = () => {
+    setProfile(null);
+    localStorage.removeItem('userUid');
+    localStorage.removeItem('isAdmin');
+    setUid(null);
+    setIsAdmin(false);
+  };
+
   if (!profile) {
     return (
-      <div className="glass-card">
-        <h2>İstifadəçi Paneli</h2>
-        <div className="pulse-circle" style={{ position: 'relative', top: '0', left: '0', transform: 'none', margin: '0 auto 30px' }}>
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-            </svg>
-        </div>
-        <div className="input-group" style={{ textAlign: 'left', marginBottom: '20px' }}>
-          <label>Manual NFC ID (Alternativ giriş)</label>
-          <div style={{ display: 'flex', gap: '10px' }}>
+      <div className="brutalist-card max-w-md">
+        <h2 className="title-block">İstifadəçi Paneli</h2>
+        <div className="input-group">
+          <label className="brutalist-label">Manual NFC ID</label>
+          <div className="flex-row gap-md">
             <input 
               type="text" 
+              className="brutalist-input"
               placeholder="Məs: A1-B2" 
               value={manualUid}
               onChange={(e) => setManualUid(e.target.value)}
             />
-            <button className="btn-primary" style={{ width: 'auto', padding: '0 20px' }} onClick={handleManualSubmit}>Giriş</button>
+            <button className="btn-primary" onClick={handleManualSubmit}>Giriş</button>
           </div>
         </div>
         
-        <div style={{ textAlign: 'center', margin: '15px 0', opacity: 0.5 }}>- VƏ YA -</div>
+        <div className="divider-text">- VƏ YA -</div>
 
         <button 
-          className="btn-primary" 
+          className="btn-primary w-full" 
           onClick={handleScan}
           disabled={isScanning}
         >
           {isScanning ? 'Skaner Aktivdir...' : 'Giriş (Qolbağı Oxut)'}
         </button>
-        {status.msg && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
+        {status.msg && <div className={`status-msg ${status.type} mt-md`}>{status.msg}</div>}
       </div>
     )
   }
 
   return (
-    <div className="glass-card" style={{ maxWidth: '600px' }}>
-      <h2 style={{ marginBottom: '10px' }}>Xoş gəldin, {profile.name}!</h2>
-      <div style={{ color: '#00e676', fontWeight: 'bold', marginBottom: '20px' }}>Stiker ID: {profile.nfc_uid}</div>
+    <div className="brutalist-card max-w-lg">
+      <h2 className="title-block">Xoş gəldin, {profile.name}!</h2>
+      <div className="neon-text mb-lg">Stiker ID: {profile.nfc_uid}</div>
       
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '30px' }}>
-          <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px' }}>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '5px' }}>Real Bank Balansı</div>
-              <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{profile.bank_balance.toFixed(2)} AZN</div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '5px' }}>{profile.bank_account}</div>
+      <div className="grid-2col mb-xl">
+          <div className="stat-panel">
+              <div className="stat-label">Real Bank Balansı</div>
+              <div className="stat-value">{profile.bank_balance.toFixed(2)} AZN</div>
+              <div className="stat-subtext">{profile.bank_account}</div>
           </div>
-          <div style={{ flex: 1, background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', padding: '20px', borderRadius: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#00e676', marginBottom: '5px' }}>Bilezik (Xərclənə bilən)</div>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#00e676' }}>{profile.wallet_balance.toFixed(2)} AZN</div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '5px' }}>Gündəlik Limitiniz</div>
+          <div className="stat-panel highlight-panel">
+              <div className="stat-label neon-text">Bilezik (Xərclənə bilən)</div>
+              <div className="stat-value neon-text">{profile.wallet_balance.toFixed(2)} AZN</div>
+              <div className="stat-subtext">Gündəlik Limitiniz</div>
           </div>
       </div>
 
-      <h3 style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px', marginBottom: '15px' }}>Bu günün əməliyyatları</h3>
+      <h3 className="section-title">Bu günün əməliyyatları</h3>
       
       {history.length === 0 ? (
-          <div style={{ padding: '20px', color: 'rgba(255,255,255,0.5)' }}>Hələ heç bir əməliyyat yoxdur.</div>
+          <div className="empty-state">Hələ heç bir əməliyyat yoxdur.</div>
       ) : (
-          <div style={{ textAlign: 'left' }}>
+          <div className="history-list">
               {history.map(tx => (
-                  <div key={tx.id} style={{ 
-                      background: 'rgba(255,255,255,0.05)', 
-                      padding: '15px', 
-                      borderRadius: '12px',
-                      marginBottom: '10px',
-                      borderLeft: tx.status === 'completed' ? '4px solid #00e676' : '4px solid #fbc02d'
-                  }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                          <span style={{ fontWeight: 'bold' }}>{tx.vendor_name}</span>
-                          <span style={{ fontWeight: 'bold', color: tx.status === 'completed' ? '#00e676' : '#fbc02d' }}>{tx.amount} AZN</span>
+                  <div key={tx.id} className={`history-item ${tx.status === 'completed' ? 'border-success' : 'border-warning'}`}>
+                      <div className="flex-row justify-between mb-sm">
+                          <span className="font-bold">{tx.vendor_name}</span>
+                          <span className={`font-bold ${tx.status === 'completed' ? 'text-success' : 'text-warning'}`}>{tx.amount} AZN</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                      <div className="flex-row justify-between text-xs text-muted">
                           <span>{new Date(tx.timestamp).toLocaleString('az-AZ')}</span>
                           <span>{tx.status === 'completed' ? 'Bankdan çıxılıb' : 'Gün sonunu gözləyir'}</span>
                       </div>
@@ -147,7 +150,7 @@ export default function UserDashboard() {
           </div>
       )}
       
-      <button className="btn-primary" style={{ marginTop: '30px', background: 'rgba(255,255,255,0.1)', color: 'white', boxShadow: 'none' }} onClick={() => setProfile(null)}>Çıxış</button>
+      <button className="btn-secondary w-full mt-xl" onClick={handleLogout}>Çıxış</button>
     </div>
   )
 }

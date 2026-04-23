@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 import datetime
 
@@ -10,6 +10,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    is_admin = Column(Boolean, default=False)
 
     # Əlaqələr
     wallet = relationship("Wallet", back_populates="owner", uselist=False)
