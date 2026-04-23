@@ -443,7 +443,7 @@
     document.getElementById('manualSection').classList.toggle('open');
   });
   document.getElementById('manualUid').addEventListener('input', e => {
-    const uid = e.target.value.trim().toUpperCase();
+    const uid = e.target.value.trim().toLowerCase();
     setUid(uid || null);
   });
 
@@ -482,7 +482,7 @@
 
       nfcReader.addEventListener('reading', ({ serialNumber }) => {
         // Convert serial number bytes to our UID format
-        const uid = serialNumber.toUpperCase().replace(/:/g, '-');
+        const uid = serialNumber.toLowerCase();
         setUid(uid);
         nfcZone.classList.remove('scanning');
         // Vibrate for feedback
@@ -498,7 +498,7 @@
 
   // ── PAYMENT ────────────────────────────────────────────
   document.getElementById('payBtn').addEventListener('click', async () => {
-    const uid      = currentUid || document.getElementById('manualUid').value.trim().toUpperCase();
+    const uid      = currentUid || document.getElementById('manualUid').value.trim().toLowerCase();
     const amount   = parseFloat(document.getElementById('amountInput').value);
     const vendorId = parseInt(document.getElementById('vendorSelect').value);
 
