@@ -1,22 +1,5 @@
-// Local storage-da 'backend_url' varsa onu istifadə et, yoxdursa cari hostu yoxla
-const savedUrl = typeof window !== 'undefined' ? localStorage.getItem('backend_url') : null;
+// Production: frontend və backend eyni serverdədir (Railway)
+// Development: Vite dev server port 5173-dən, backend port 8000-dən işləyir
+const isDev = typeof window !== 'undefined' && window.location.port === '5173';
 
-let base = savedUrl || (window.location.port === '5173' 
-    ? `http://${window.location.hostname}:8000` 
-    : 'https://breezeband-production.up.railway.app');
-
-// Strip trailing slash to avoid double-slash (//) which causes FastAPI to return 405
-export const API_BASE = base.replace(/\/+$/, '');
-
-export const setBackendUrl = (url) => {
-    const cleanUrl = (url || '').trim().replace(/\/+$/, '');
-    
-    // Vercel URL-ni backend kimi istifadə etməyin qarşısını alırıq
-    if (cleanUrl.includes('vercel.app')) {
-        alert("Xəta: Siz backend əvəzinə frontend (Vercel) URL-ni daxil etdiniz! Zəhmət olmasa Render, Railway və ya lokal backend URL-ni daxil edin.");
-        return;
-    }
-    
-    localStorage.setItem('backend_url', cleanUrl);
-    window.location.reload();
-};
+export const API_BASE = isDev ? 'http://localhost:8000' : '';

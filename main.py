@@ -60,6 +60,11 @@ async def log_requests(request: Request, call_next):
 # Static files (POS terminal)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# React frontend assets (JS, CSS)
+frontend_dist = os.path.join(os.path.dirname(__file__), "frontend-react", "dist")
+if os.path.exists(os.path.join(frontend_dist, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="frontend-assets")
+
 redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 r = redis.from_url(redis_url, decode_responses=True)
 
@@ -304,4 +309,16 @@ def settle_day(db: Session = Depends(get_db)):
 
 @app.get("/")
 def read_root():
+    index_path = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
     return {"status": "Mühərrik işləyir", "redis_ping": r.ping()}
+
+# React Router catch-all: bütün frontend səhifələri index.html-ə yönləndir
+@app.get("/{path:path}")
+def catch_all(path: str):
+    # API və static yollarını atla
+    index_path = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    raise HTTPException(status_code=404, detail="Not found")
