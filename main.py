@@ -152,9 +152,16 @@ def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(ge
     redis_key = f"wallet:{payment.nfc_uid}:balance"
     
     current_balance = r.get(redis_key)
+    
+    # Redis-də yoxdursa, PostgreSQL-dən yoxla və Redis-ə cache et
     if current_balance is None:
-        raise HTTPException(status_code=404, detail="Qolbaq tapılmadı və ya balans aktivləşdirilməyib")
-        
+        wallet_check = db.query(models.Wallet).filter(models.Wallet.nfc_uid == payment.nfc_uid).first()
+        if wallet_check is None:
+            raise HTTPException(status_code=404, detail="Qolbaq tapılmadı və ya balans aktivləşdirilməyib")
+        # Redis-ə cache edirik ki, növbəti dəfə sürətli olsun
+        r.set(redis_key, wallet_check.balance)
+        current_balance = wallet_check.balance
+    
     current_balance = float(current_balance)
     if current_balance < payment.amount:
         raise HTTPException(status_code=400, detail="Mövcud vəsait çatmır")

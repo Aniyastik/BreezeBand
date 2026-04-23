@@ -3,34 +3,13 @@ import { API_BASE } from '../api'
 
 export default function PosTerminal() {
   const [amount, setAmount] = useState('')
+  const [scannedUid, setScannedUid] = useState('')
   const [status, setStatus] = useState({ msg: 'Hazırdır', type: '' })
   const [isScanning, setIsScanning] = useState(false)
-  const [manualUid, setManualUid] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
 
-  const handleManualSubmit = async () => {
-    const amt = parseFloat(amount)
-    const uid = manualUid.trim()
-
-    if (!amt || amt <= 0) {
-      setStatus({ msg: "Məbləği düzgün daxil edin", type: "status-error" })
-      return
-    }
-    if (!uid) {
-      setStatus({ msg: "NFC ID daxil edin", type: "status-error" })
-      return
-    }
-    
-    setStatus({ msg: "Gözləyin...", type: "status-waiting" });
-    await processPayment(uid, amt);
-  }
-
+  // NFC-ni oxu və ID-ni ekrana yaz (ödəniş etmə, sadəcə oxu)
   const handleScan = async () => {
-    const amt = parseFloat(amount)
-    if (!amt || amt <= 0) {
-      setStatus({ msg: "Məbləği düzgün daxil edin", type: "status-error" })
-      return
-    }
-
     if (isScanning) return;
 
     try {
@@ -40,28 +19,22 @@ export default function PosTerminal() {
         await ndef.scan()
         setStatus({ msg: "Qolbağı telefona yaxınlaşdırın...", type: "status-waiting" })
 
+        let hasRead = false;
         ndef.onreadingerror = () => {
           setStatus({ msg: "Oxuma xətası. Yenidən cəhd edin.", type: "status-error" });
+          setIsScanning(false);
         };
 
-        // Bircə dəfə oxumaq üçün flag
-        let hasRead = false;
-
-        ndef.onreading = async (event) => {
+        ndef.onreading = (event) => {
           if (hasRead) return;
           hasRead = true;
-
           const nfc_uid = event.serialNumber;
-          setStatus({ msg: "Oxunur... Zəhmət olmasa gözləyin", type: "status-waiting" });
-          
-          try {
-            await processPayment(nfc_uid, amt);
-          } finally {
-            setIsScanning(false);
-          }
+          setScannedUid(nfc_uid);
+          setStatus({ msg: `Qolbaq oxundu: ${nfc_uid}`, type: "status-success" });
+          setIsScanning(false);
         }
       } else {
-        setStatus({ msg: "NFC dəstəklənmir. (Yalnız Android Chrome HTTPS)", type: "status-error" })
+        setStatus({ msg: "NFC dəstəklənmir. Aşağıda manual ID daxil edin.", type: "status-error" })
       }
     } catch (error) {
       setIsScanning(false);
@@ -69,7 +42,23 @@ export default function PosTerminal() {
     }
   }
 
-  const processPayment = async (uid, amt) => {
+  // Ödənişi göndər
+  const handlePay = async () => {
+    const amt = parseFloat(amount)
+    const uid = scannedUid.trim()
+
+    if (!amt || amt <= 0) {
+      setStatus({ msg: "Məbləği düzgün daxil edin", type: "status-error" })
+      return
+    }
+    if (!uid) {
+      setStatus({ msg: "Əvvəlcə qolbağı oxudun və ya ID daxil edin", type: "status-error" })
+      return
+    }
+
+    setIsProcessing(true);
+    setStatus({ msg: "Ödəniş göndərilir...", type: "status-waiting" });
+
     try {
       const response = await fetch(`${API_BASE}/pay`, {
         method: 'POST',
@@ -92,13 +81,14 @@ export default function PosTerminal() {
       if (response.ok) {
         setStatus({ msg: `Uğurlu! Qalıq: ${data.remaining_balance} AZN`, type: "status-success" })
         setAmount('')
-      } else if (response.status === 405) {
-        setStatus({ msg: "Xəta 405: Siz backend əvəzinə frontend (Railway) URL-ni daxil etmisiniz. Ayarlardan əsl FastAPI backend linkini yazın!", type: "status-error" });
+        setScannedUid('')
       } else {
         setStatus({ msg: `Xəta: ${data.detail || 'Naməlum xəta'}`, type: "status-error" })
       }
     } catch (error) {
       setStatus({ msg: "Serverə qoşulmaq alınmadı: " + error.message, type: "status-error" })
+    } finally {
+      setIsProcessing(false);
     }
   }
 
@@ -111,7 +101,10 @@ export default function PosTerminal() {
         </svg>
       </div>
       <h2 style={{ marginTop: '20px' }}>POS Terminal</h2>
+
+      {/* Məbləğ */}
       <div className="input-group currency-suffix">
+        <label>Məbləğ (AZN)</label>
         <input 
           type="number" 
           className="large-amount"
@@ -121,28 +114,70 @@ export default function PosTerminal() {
           onChange={(e) => setAmount(e.target.value)}
         />
       </div>
-      <div className="input-group">
-        <label>Manual NFC ID</label>
-        <div style={{ display: 'flex', gap: '10px' }}>
+
+      {/* ADDIM 1: NFC oxu */}
+      <div style={{ 
+        background: 'rgba(255,255,255,0.05)', 
+        borderRadius: '16px', 
+        padding: '20px', 
+        marginBottom: '20px',
+        border: scannedUid ? '1px solid rgba(0,230,118,0.3)' : '1px solid rgba(255,255,255,0.1)'
+      }}>
+        <div style={{ fontSize: '12px', opacity: 0.6, marginBottom: '10px' }}>ADDIM 1: Qolbağı oxudun</div>
+        
+        <button 
+          className="btn-primary" 
+          onClick={handleScan}
+          disabled={isScanning}
+          style={{ 
+            marginBottom: '15px',
+            background: isScanning ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #00b0ff, #0091ea)',
+            boxShadow: isScanning ? 'none' : '0 10px 20px rgba(0,176,255,0.3)'
+          }}
+        >
+          {isScanning ? '⏳ Gözləyirəm... Qolbağı yaxınlaşdırın' : '📡 NFC Skan Et'}
+        </button>
+
+        <div style={{ textAlign: 'center', margin: '10px 0', opacity: 0.4, fontSize: '12px' }}>— və ya manual daxil edin —</div>
+
+        <div className="input-group" style={{ margin: 0 }}>
           <input 
             type="text" 
-            placeholder="Məs: A1-B2" 
-            value={manualUid}
-            onChange={(e) => setManualUid(e.target.value)}
+            placeholder="NFC ID (məs: 04:e1:f9:92:ca:2a:81)" 
+            value={scannedUid}
+            onChange={(e) => setScannedUid(e.target.value)}
+            style={{ textAlign: 'center', fontSize: '14px' }}
           />
-          <button className="btn-primary" style={{ width: 'auto', padding: '0 20px' }} onClick={handleManualSubmit}>Təsdiq</button>
         </div>
-      </div>
-      
-      <div style={{ textAlign: 'center', margin: '15px 0', opacity: 0.5 }}>- VƏ YA -</div>
 
+        {scannedUid && (
+          <div style={{ 
+            marginTop: '10px', 
+            padding: '8px 16px', 
+            background: 'rgba(0,230,118,0.1)', 
+            borderRadius: '8px',
+            color: '#00e676',
+            fontSize: '13px',
+            textAlign: 'center'
+          }}>
+            ✅ Qolbaq: {scannedUid}
+          </div>
+        )}
+      </div>
+
+      {/* ADDIM 2: Ödəniş et */}
       <button 
         className="btn-primary" 
-        onClick={handleScan}
-        disabled={isScanning}
+        onClick={handlePay}
+        disabled={isProcessing || !scannedUid || !amount}
+        style={{
+          opacity: (!scannedUid || !amount) ? 0.4 : 1,
+          background: isProcessing ? 'rgba(255,255,255,0.1)' : undefined
+        }}
       >
-        {isScanning ? 'Skaner Aktivdir...' : 'Ödəniş Al'}
+        {isProcessing ? '⏳ Gözləyin...' : '💳 Ödənişi Təsdiq Et'}
       </button>
+
       {status.msg && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
     </div>
   )
