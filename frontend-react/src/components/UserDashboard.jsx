@@ -4,18 +4,18 @@ import { API_BASE } from '../api'
 export default function UserDashboard({ setIsAdmin, setUid }) {
   const [profile, setProfile] = useState(null)
   const [history, setHistory] = useState([])
-  const [status, setStatus] = useState({ msg: 'Hesabınıza daxil olmaq üçün qolbağı oxudun', type: '' })
+  const [status, setStatus] = useState({ msg: 'Scan wristband to access your account', type: '' })
   const [isScanning, setIsScanning] = useState(false)
   const [manualUid, setManualUid] = useState('')
 
   const handleManualSubmit = async () => {
     const uid = manualUid.trim()
     if (!uid) {
-      setStatus({ msg: "NFC ID daxil edin", type: "status-error" })
+      setStatus({ msg: "Enter NFC ID", type: "status-error" })
       return
     }
     
-    setStatus({ msg: "Hesabınız yoxlanılır...", type: "status-waiting" });
+    setStatus({ msg: "Checking account...", type: "status-waiting" });
     await fetchDashboardData(uid);
   }
 
@@ -26,32 +26,32 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
       if ('NDEFReader' in window) {
         setIsScanning(true);
         const ndef = new window.NDEFReader()
-        await ndef.scan()
-        setStatus({ msg: "Qolbağı telefona yaxınlaşdırın...", type: "status-waiting" })
+        ndef.scan()
+        setStatus({ msg: "Bring the wristband closer to the phone...", type: "status-waiting" })
 
         ndef.onreadingerror = () => {
-          setStatus({ msg: "Oxuma xətası. Yenidən cəhd edin.", type: "status-error" });
+          setStatus({ msg: "Reading error. Please try again.", type: "status-error" });
         };
 
         ndef.onreading = async (event) => {
           const nfc_uid = event.serialNumber
-          setStatus({ msg: "Hesabınız yoxlanılır...", type: "status-waiting" })
+          setStatus({ msg: "Checking account...", type: "status-waiting" })
           await fetchDashboardData(nfc_uid)
           setIsScanning(false);
         }
       } else {
-        setStatus({ msg: "NFC dəstəklənmir. (Yalnız Android Chrome HTTPS)", type: "status-error" })
+        setStatus({ msg: "NFC not supported. (Android Chrome HTTPS only)", type: "status-error" })
       }
     } catch (error) {
       setIsScanning(false);
-      setStatus({ msg: "NFC xətası: " + error.message, type: "status-error" })
+      setStatus({ msg: "NFC Error: " + error.message, type: "status-error" })
     }
   }
 
   const fetchDashboardData = async (uid) => {
     try {
       const profRes = await fetch(`${API_BASE}/profile/${uid}`)
-      if (!profRes.ok) throw new Error("Profil tapılmadı")
+      if (!profRes.ok) throw new Error("Profile not found")
       const profData = await profRes.json()
       
       const histRes = await fetch(`${API_BASE}/history/${uid}`)
@@ -66,7 +66,7 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
       setUid(uid)
       setIsAdmin(profData.is_admin)
     } catch (error) {
-      setStatus({ msg: "Xəta: " + error.message, type: "status-error" })
+      setStatus({ msg: "Error: " + error.message, type: "status-error" })
       setProfile(null)
     }
   }
@@ -82,29 +82,29 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
   if (!profile) {
     return (
       <div className="brutalist-card max-w-md">
-        <h2 className="title-block">İstifadəçi Paneli</h2>
+        <h2 className="title-block">User Dashboard</h2>
         <div className="input-group">
           <label className="brutalist-label">Manual NFC ID</label>
           <div className="flex-row gap-md">
             <input 
               type="text" 
               className="brutalist-input"
-              placeholder="Məs: A1-B2" 
+              placeholder="E.g. A1-B2" 
               value={manualUid}
               onChange={(e) => setManualUid(e.target.value)}
             />
-            <button className="btn-primary" onClick={handleManualSubmit}>Giriş</button>
+            <button className="btn-primary" onClick={handleManualSubmit}>Login</button>
           </div>
         </div>
         
-        <div className="divider-text">- VƏ YA -</div>
+        <div className="divider-text">- OR -</div>
 
         <button 
           className="btn-primary w-full" 
           onClick={handleScan}
           disabled={isScanning}
         >
-          {isScanning ? 'Skaner Aktivdir...' : 'Giriş (Qolbağı Oxut)'}
+          {isScanning ? 'Scanner Active...' : 'Login (Scan Wristband)'}
         </button>
         {status.msg && <div className={`status-msg ${status.type} mt-md`}>{status.msg}</div>}
       </div>
@@ -113,26 +113,26 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
 
   return (
     <div className="brutalist-card max-w-lg">
-      <h2 className="title-block">Xoş gəldin, {profile.name}!</h2>
-      <div className="neon-text mb-lg">Stiker ID: {profile.nfc_uid}</div>
+      <h2 className="title-block">Welcome, {profile.name}!</h2>
+      <div className="neon-text mb-lg">Sticker ID: {profile.nfc_uid}</div>
       
       <div className="grid-2col mb-xl">
           <div className="stat-panel">
-              <div className="stat-label">Real Bank Balansı</div>
+              <div className="stat-label">Real Bank Balance</div>
               <div className="stat-value">{profile.bank_balance.toFixed(2)} AZN</div>
               <div className="stat-subtext">{profile.bank_account}</div>
           </div>
           <div className="stat-panel highlight-panel">
-              <div className="stat-label neon-text">Bilezik (Xərclənə bilən)</div>
+              <div className="stat-label neon-text">Wristband (Spendable)</div>
               <div className="stat-value neon-text">{profile.wallet_balance.toFixed(2)} AZN</div>
-              <div className="stat-subtext">Gündəlik Limitiniz</div>
+              <div className="stat-subtext">Your Daily Limit</div>
           </div>
       </div>
 
-      <h3 className="section-title">Bu günün əməliyyatları</h3>
+      <h3 className="section-title">Today's Transactions</h3>
       
       {history.length === 0 ? (
-          <div className="empty-state">Hələ heç bir əməliyyat yoxdur.</div>
+          <div className="empty-state">No transactions yet.</div>
       ) : (
           <div className="history-list">
               {history.map(tx => (
@@ -142,15 +142,15 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
                           <span className={`font-bold ${tx.status === 'completed' ? 'text-success' : 'text-warning'}`}>{tx.amount} AZN</span>
                       </div>
                       <div className="flex-row justify-between text-xs text-muted">
-                          <span>{new Date(tx.timestamp).toLocaleString('az-AZ')}</span>
-                          <span>{tx.status === 'completed' ? 'Bankdan çıxılıb' : 'Gün sonunu gözləyir'}</span>
+                          <span>{new Date(tx.timestamp).toLocaleString('en-US')}</span>
+                          <span>{tx.status === 'completed' ? 'Settled' : 'Pending Settlement'}</span>
                       </div>
                   </div>
               ))}
           </div>
       )}
       
-      <button className="btn-secondary w-full mt-xl" onClick={handleLogout}>Çıxış</button>
+      <button className="btn-secondary w-full mt-xl" onClick={handleLogout}>Logout</button>
     </div>
   )
 }

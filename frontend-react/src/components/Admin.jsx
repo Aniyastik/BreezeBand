@@ -10,11 +10,11 @@ export default function Admin({ adminUid }) {
   const handleSearch = async () => {
     const uid = searchUid.trim()
     if (!uid) {
-      setStatus({ msg: "NFC ID daxil edin", type: "status-error" })
+      setStatus({ msg: "Enter NFC ID", type: "status-error" })
       return
     }
 
-    setStatus({ msg: "Axtarılır...", type: "status-waiting" })
+    setStatus({ msg: "Searching...", type: "status-waiting" })
     try {
       const res = await fetch(`${API_BASE}/api/users/by-nfc/${uid}`, {
         headers: { 'X-Admin-UID': adminUid }
@@ -25,18 +25,18 @@ export default function Admin({ adminUid }) {
         setStatus({ msg: '', type: '' })
       } else {
         const err = await res.json()
-        setStatus({ msg: `Xəta: ${err.detail}`, type: "status-error" })
+        setStatus({ msg: `Error: ${err.detail}`, type: "status-error" })
         setUser(null)
       }
     } catch (err) {
-      setStatus({ msg: 'Baza ilə əlaqə kəsildi', type: "status-error" })
+      setStatus({ msg: 'Database connection lost', type: "status-error" })
       setUser(null)
     }
   }
 
   const handleSettle = async () => {
     setIsProcessing(true)
-    setStatus({ msg: "Hesablaşma aparılır... Gözləyin", type: "status-waiting" })
+    setStatus({ msg: "Settlement in progress... Please wait", type: "status-waiting" })
     
     try {
       const response = await fetch(`${API_BASE}/settle_day`, { 
@@ -46,12 +46,12 @@ export default function Admin({ adminUid }) {
       const data = await response.json()
       
       if (response.ok) {
-        setStatus({ msg: `Uğurlu! ${data.message} Çəkilən məbləğ: ${data.total_settled} AZN`, type: "status-success" })
+        setStatus({ msg: `Success! ${data.message} Settled amount: ${data.total_settled} AZN`, type: "status-success" })
       } else {
-        setStatus({ msg: `Xəta: ${data.detail}`, type: "status-error" })
+        setStatus({ msg: `Error: ${data.detail}`, type: "status-error" })
       }
     } catch (error) {
-      setStatus({ msg: "Serverə qoşulmaq alınmadı: " + error.message, type: "status-error" })
+      setStatus({ msg: "Failed to connect to server: " + error.message, type: "status-error" })
     } finally {
       setIsProcessing(false)
     }
@@ -63,30 +63,30 @@ export default function Admin({ adminUid }) {
       
       <div className="admin-controls mb-xl">
           <p className="text-muted mb-md text-sm">
-            Sistem avtomatik olaraq hər 2 dəqiqədən bir gün sonunu edir.
+            The system automatically settles end of day every 2 minutes.
           </p>
           <button 
             className="btn-primary w-full" 
             onClick={handleSettle}
             disabled={isProcessing}
           >
-            {isProcessing ? 'Gözləyin...' : 'Manual Hesablaşma'}
+            {isProcessing ? 'Please wait...' : 'Manual Settlement'}
           </button>
       </div>
 
       <div className="divider-thick mb-xl"></div>
 
-      <h3 className="section-title">İstifadəçi Axtarışı</h3>
+      <h3 className="section-title">User Search</h3>
       <div className="input-group mb-lg">
         <div className="flex-row gap-md">
           <input 
             type="text" 
             className="brutalist-input"
-            placeholder="NFC ID (Məs: A1-B2)" 
+            placeholder="NFC ID (E.g. A1-B2)" 
             value={searchUid}
             onChange={(e) => setSearchUid(e.target.value)}
           />
-          <button className="btn-secondary whitespace-nowrap" onClick={handleSearch}>Axtar</button>
+          <button className="btn-secondary whitespace-nowrap" onClick={handleSearch}>Search</button>
         </div>
       </div>
 
@@ -95,7 +95,7 @@ export default function Admin({ adminUid }) {
       {user && (
         <div className="user-details-panel">
             <div className="detail-row">
-              <span className="detail-label">Ad:</span>
+              <span className="detail-label">Name:</span>
               <span className="detail-value font-bold">{user.name}</span>
             </div>
             <div className="detail-row">
@@ -103,19 +103,19 @@ export default function Admin({ adminUid }) {
               <span className="detail-value neon-text">{user.nfc_uid}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">İcazə:</span>
-              <span className={`detail-value ${user.is_admin ? 'text-success' : 'text-muted'}`}>{user.is_admin ? 'Admin' : 'İstifadəçi'}</span>
+              <span className="detail-label">Role:</span>
+              <span className={`detail-value ${user.is_admin ? 'text-success' : 'text-muted'}`}>{user.is_admin ? 'Admin' : 'User'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Qolbaq Balansı:</span>
+              <span className="detail-label">Wristband Balance:</span>
               <span className="detail-value text-success font-bold">{user.wallet_balance} AZN</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Bank Kartı:</span>
+              <span className="detail-label">Bank Account:</span>
               <span className="detail-value text-xs">{user.bank_account}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Real Bank Balansı:</span>
+              <span className="detail-label">Real Bank Balance:</span>
               <span className="detail-value font-bold">{user.bank_balance} AZN</span>
             </div>
         </div>
