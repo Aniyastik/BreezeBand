@@ -37,7 +37,7 @@ async def run_daily_settlement():
         print(f"[{datetime.now()}] AVTOMATİK GÜNÜN SONU HESABLAŞMASI BAŞLADI...")
         db = next(get_db())
         try:
-            process_settlement(db)
+            await process_settlement(db)
         except Exception as e:
             print(f"Hesablaşma xətası: {e}")
         finally:
@@ -365,7 +365,7 @@ def get_history(nfc_uid: str, db: Session = Depends(get_db)):
         })
     return result
 
-def process_settlement(db: Session):
+async def process_settlement(db: Session):
     # Bütün pending_settlement tranzaksiyaları tapırıq
     pending_txs = db.query(models.Transaction).filter(models.Transaction.status == "pending_settlement").all()
     
@@ -391,11 +391,12 @@ def process_settlement(db: Session):
         # Bank API-nə toplu (batch) sorğu göndəririk
         try:
             port = os.environ.get("PORT", 8000)
-            response = httpx.post(
-                f"http://127.0.0.1:{port}/bank/charge", 
-                json={"nfc_uid": wallet.nfc_uid, "amount": amount},
-                timeout=10.0
-            )
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"http://127.0.0.1:{port}/bank/charge", 
+                    json={"nfc_uid": wallet.nfc_uid, "amount": amount},
+                    timeout=10.0
+                )
             
             if response.status_code == 200 and response.json().get("bank_status") == "approved":
                 # Uğurludursa, o cüzdanın bütün pending ödənişlərini completed edirik
@@ -415,8 +416,8 @@ def process_settlement(db: Session):
     }
 
 @app.post("/settle_day", response_model=schemas.SettlementResponse)
-def settle_day(admin: models.User = Depends(get_current_admin), db: Session = Depends(get_db)):
-    return process_settlement(db)
+async def settle_day(admin: models.User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return await process_settlement(db)
 
 
 @app.get("/")
