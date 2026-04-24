@@ -9,6 +9,38 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
   const [status, setStatus] = useState({ msg: 'Scan wristband to access your account', type: '' })
   const [isScanning, setIsScanning] = useState(false)
   const [manualUid, setManualUid] = useState('')
+  const [topupAmount, setTopupAmount] = useState('')
+  const [isToppingUp, setIsToppingUp] = useState(false)
+
+  const handleTopup = async () => {
+    if (!topupAmount || isNaN(topupAmount) || Number(topupAmount) <= 0) {
+      alert("Please enter a valid amount")
+      return
+    }
+    setIsToppingUp(true)
+    try {
+      const response = await fetch(`${API_BASE}/topup_bank`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nfc_uid: profile.nfc_uid,
+          amount: parseFloat(topupAmount)
+        })
+      })
+      const data = await response.json()
+      if (response.ok) {
+        alert(data.message)
+        await fetchDashboardData(profile.nfc_uid)
+        setTopupAmount('')
+      } else {
+        alert("Error: " + data.detail)
+      }
+    } catch (err) {
+      alert("Top up failed: " + err.message)
+    } finally {
+      setIsToppingUp(false)
+    }
+  }
 
   const handleManualSubmit = async () => {
     const uid = manualUid.trim()
@@ -132,7 +164,23 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
           <div className="stat-panel">
               <div className="stat-label">Real Bank Balance</div>
               <div className="stat-value">{profile.bank_balance.toFixed(2)} AZN</div>
-              <div className="stat-subtext">{profile.bank_account}</div>
+              <div className="stat-subtext mb-sm">{profile.bank_account}</div>
+              <div className="flex-row gap-sm mt-md">
+                 <input 
+                   type="number" 
+                   className="brutalist-input text-xs py-sm px-sm flex-1" 
+                   placeholder="Amount (AZN)" 
+                   value={topupAmount}
+                   onChange={e => setTopupAmount(e.target.value)}
+                 />
+                 <button 
+                   className="btn-secondary text-xs py-sm px-sm" 
+                   onClick={handleTopup}
+                   disabled={isToppingUp}
+                 >
+                   {isToppingUp ? '...' : '+ Add'}
+                 </button>
+              </div>
           </div>
           <div className="stat-panel highlight-panel">
               <div className="stat-label neon-text">Wristband (Spendable)</div>

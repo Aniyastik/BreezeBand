@@ -215,6 +215,23 @@ def register_nfc(data: schemas.RegistrationCreate, db: Session = Depends(get_db)
     
     return {"status": "success", "message": "Qolbaq qeydiyyata alındı!", "balance": wallet.balance}
 
+@app.post("/topup_bank")
+def topup_bank(data: schemas.TopUpRequest, db: Session = Depends(get_db)):
+    nfc_uid = data.nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found")
+        
+    bank_account = db.query(models.BankAccount).filter(models.BankAccount.user_id == wallet.user_id).first()
+    if not bank_account:
+        raise HTTPException(status_code=404, detail="Bank account not found")
+        
+    bank_account.balance += data.amount
+    db.commit()
+    db.refresh(bank_account)
+    
+    return {"status": "success", "message": f"{data.amount} AZN added to real bank account!", "new_bank_balance": bank_account.balance}
+
 # ==============================================================================
 # HƏDƏF NÖQTƏSİ: Toxundur və Keç (Sıfır Ləngimə Mühərriki)
 # ==============================================================================

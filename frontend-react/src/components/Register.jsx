@@ -71,6 +71,7 @@ export default function Register({ adminUid }) {
         setUserName('')
         setNfcUid('')
         setInitialBalance('')
+        setTimeout(() => navigate('/dashboard'), 2000)
       } else {
         setStatus({ msg: `Error: ${data.detail}`, type: "status-error" })
       }

@@ -27,3 +27,7 @@ class SettlementResponse(BaseModel):
     status: str
     message: str
     total_settled: float
+
+class TopUpRequest(BaseModel):
+    nfc_uid: str
+    amount: float
