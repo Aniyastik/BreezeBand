@@ -37,7 +37,7 @@ async def run_daily_settlement():
         print(f"[{datetime.now()}] AVTOMATİK GÜNÜN SONU HESABLAŞMASI BAŞLADI...")
         db = next(get_db())
         try:
-            settle_day(db)
+            process_settlement(db)
         except Exception as e:
             print(f"Hesablaşma xətası: {e}")
         finally:
@@ -348,8 +348,7 @@ def get_history(nfc_uid: str, db: Session = Depends(get_db)):
         })
     return result
 
-@app.post("/settle_day", response_model=schemas.SettlementResponse)
-def settle_day(admin: models.User = Depends(get_current_admin), db: Session = Depends(get_db)):
+def process_settlement(db: Session):
     # Bütün pending_settlement tranzaksiyaları tapırıq
     pending_txs = db.query(models.Transaction).filter(models.Transaction.status == "pending_settlement").all()
     
@@ -397,6 +396,10 @@ def settle_day(admin: models.User = Depends(get_current_admin), db: Session = De
         "message": "Günün sonu hesablaşması bitdi!", 
         "total_settled": round(total_settled, 2)
     }
+
+@app.post("/settle_day", response_model=schemas.SettlementResponse)
+def settle_day(admin: models.User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return process_settlement(db)
 
 
 @app.get("/")
