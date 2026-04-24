@@ -22,10 +22,11 @@ from sqlalchemy import text
 
 models.Base.metadata.create_all(bind=engine)
 
-# Sadə migrasiya: is_admin sütunu yoxdursa əlavə et
+# Sadə migrasiya: is_admin və category sütunu yoxdursa əlavə et
 try:
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE vendors ADD COLUMN IF NOT EXISTS category VARCHAR DEFAULT 'General';"))
 except Exception as e:
     print(f"Migrasiya xətası (göz ardı edilə bilər): {e}")
 app = FastAPI(title="Sea Breeze Mini-Economy Engine")
@@ -98,7 +99,7 @@ def pos_terminal():
 def list_vendors(db: Session = Depends(get_db)):
     """List all vendors for the POS dropdown."""
     vendors = db.query(models.Vendor).all()
-    return [{"id": v.id, "name": v.name, "virtual_balance": v.virtual_balance} for v in vendors]
+    return [{"id": v.id, "name": v.name, "category": v.category, "virtual_balance": v.virtual_balance} for v in vendors]
 
 
 @app.get("/db-status")
@@ -109,13 +110,55 @@ def test_db_connection(db: Session = Depends(get_db)):
 
 @app.post("/seed")
 def seed_database(db: Session = Depends(get_db)):
+    vendors_data = {
+        "Restaurants": [
+            "Shore House Restaurant and Lounge",
+            "Park Cafe",
+            "BOSIOR",
+            "Wine Store and bar",
+            "Polo Cafe",
+            "Fish Box",
+            "Scalini",
+            "The Chayxana",
+            "Shaurma No1"
+        ],
+        "Health and Fitness": [
+            "Sport Beach Club",
+            "Anti-aging Center",
+            "Crocus Fitness"
+        ],
+        "Entertainment": [
+            "Italian Circus",
+            "Nine senses",
+            "Funz karting",
+            "Funzilla"
+        ],
+        "Stores": [
+            "Wine store and bar",
+            "Yana"
+        ],
+        "Beach tickets": []
+    }
+    
+    # Add vendors
+    for category, names in vendors_data.items():
+        for name in names:
+            existing_vendor = db.query(models.Vendor).filter(models.Vendor.name == name).first()
+            if existing_vendor:
+                if existing_vendor.category != category:
+                    existing_vendor.category = category
+            else:
+                new_vendor = models.Vendor(name=name, category=category, virtual_balance=0.0)
+                db.add(new_vendor)
+    db.commit()
+
     # Baza əvvəllər toxumlanıbsa xəta verməməsi üçün sadə yoxlama
     existing_user = db.query(models.User).filter(models.User.name == "Aniya").first()
     if existing_user:
         if not existing_user.is_admin:
             existing_user.is_admin = True
             db.commit()
-        return {"status": "Toxumlar artıq əkilib!", "balance": r.get('wallet:A1-B2-C3-D4:balance')}
+        return {"status": "Toxumlar artıq əkilib, yeni obyektlər əlavə edildi!", "balance": r.get('wallet:A1-B2-C3-D4:balance')}
 
     user = models.User(name="Aniya", is_admin=True)
     db.add(user)
@@ -125,13 +168,11 @@ def seed_database(db: Session = Depends(get_db)):
     wallet = models.Wallet(user_id=user.id, nfc_uid=nfc_uid, balance=200.0) # 200 AZN verək
     db.add(wallet)
     
-    vendor = models.Vendor(name="Hovuz Bari", virtual_balance=0.0)
-    db.add(vendor)
-    db.commit()
+    vendor = db.query(models.Vendor).filter(models.Vendor.name == "Shore House Restaurant and Lounge").first()
     
     r.set(f"wallet:{nfc_uid}:balance", 200.0)
     
-    return {"status": "Toxumlar səpildi!", "test_nfc_uid": nfc_uid, "vendor_id": vendor.id, "balance": 200.0}
+    return {"status": "Toxumlar səpildi!", "test_nfc_uid": nfc_uid, "vendor_id": vendor.id if vendor else 1, "balance": 200.0}
 
 @app.post("/register_nfc")
 def register_nfc(data: schemas.RegistrationCreate, db: Session = Depends(get_db)):

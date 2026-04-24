@@ -46,6 +46,7 @@ class Vendor(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
+    category = Column(String, index=True, default="General")
     virtual_balance = Column(Float, default=0.0) # Obyektin (restoranın) qazancı
     
     transactions = relationship("Transaction", back_populates="vendor")
