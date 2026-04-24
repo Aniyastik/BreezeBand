@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../api'
 
 export default function Register({ adminUid }) {
+  const navigate = useNavigate()
   const [userName, setUserName] = useState('')
   const [nfcUid, setNfcUid] = useState('')
   const [initialBalance, setInitialBalance] = useState('')
@@ -47,12 +49,14 @@ export default function Register({ adminUid }) {
     setStatus({ msg: "Registering user...", type: "status-waiting" })
 
     try {
+      const headers = { 'Content-Type': 'application/json' }
+      if (adminUid) {
+        headers['X-Admin-UID'] = adminUid
+      }
+
       const response = await fetch(`${API_BASE}/register_nfc`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Admin-UID': adminUid 
-        },
+        headers,
         body: JSON.stringify({
           user_name: userName.trim(),
           nfc_uid: nfcUid.trim(),
@@ -76,7 +80,15 @@ export default function Register({ adminUid }) {
   }
 
   return (
-    <div className="brutalist-card max-w-lg">
+    <div className="brutalist-card max-w-lg relative">
+      <button 
+        className="text-muted text-sm mb-md underline cursor-pointer"
+        onClick={() => navigate('/dashboard')}
+        style={{ background: 'none', border: 'none', padding: 0 }}
+      >
+        ← Back to Login
+      </button>
+
       <h2 className="title-block">Register Wristband</h2>
       
       <p className="text-muted mb-lg text-sm">

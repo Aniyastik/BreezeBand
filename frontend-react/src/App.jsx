@@ -22,14 +22,13 @@ function App() {
       <nav className="nav-bar">
         <NavLink to="/dashboard" className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>Dashboard</NavLink>
         {isAdmin && <NavLink to="/admin" className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>Admin</NavLink>}
-        {isAdmin && <NavLink to="/register" className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>Register</NavLink>}
       </nav>
       
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<UserDashboard setIsAdmin={setIsAdmin} setUid={setUid} />} />
         <Route path="/admin" element={isAdmin ? <Admin adminUid={uid} /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/register" element={isAdmin ? <Register adminUid={uid} /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/register" element={<Register />} />
       </Routes>
     </div>
   )

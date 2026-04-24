@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../api'
 
 export default function UserDashboard({ setIsAdmin, setUid }) {
+  const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
   const [history, setHistory] = useState([])
   const [status, setStatus] = useState({ msg: 'Scan wristband to access your account', type: '' })
@@ -83,29 +85,39 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
     return (
       <div className="brutalist-card max-w-md">
         <h2 className="title-block">User Dashboard</h2>
-        <div className="input-group">
-          <label className="brutalist-label">Manual NFC ID</label>
-          <div className="flex-row gap-md">
+        
+        <button 
+          className="btn-primary w-full mb-md" 
+          onClick={handleScan}
+          disabled={isScanning}
+        >
+          {isScanning ? 'Scanner Active...' : 'LOGIN (SCAN WRISTBAND)'}
+        </button>
+
+        <div className="divider-text">- OR -</div>
+
+        <button 
+          className="btn-secondary w-full mb-lg" 
+          onClick={() => navigate('/register')}
+        >
+          SIGN UP (CREATE ACCOUNT)
+        </button>
+
+        <div className="mt-xl text-center">
+          <p className="text-muted text-xs mb-sm">Manual Login (for testing):</p>
+          <div className="flex-row gap-sm justify-center">
             <input 
               type="text" 
-              className="brutalist-input"
+              className="brutalist-input text-sm py-sm px-sm"
+              style={{ width: '150px' }}
               placeholder="E.g. A1-B2" 
               value={manualUid}
               onChange={(e) => setManualUid(e.target.value)}
             />
-            <button className="btn-primary" onClick={handleManualSubmit}>Login</button>
+            <button className="btn-secondary text-sm py-sm px-md" onClick={handleManualSubmit}>Login</button>
           </div>
         </div>
-        
-        <div className="divider-text">- OR -</div>
 
-        <button 
-          className="btn-primary w-full" 
-          onClick={handleScan}
-          disabled={isScanning}
-        >
-          {isScanning ? 'Scanner Active...' : 'Login (Scan Wristband)'}
-        </button>
         {status.msg && <div className={`status-msg ${status.type} mt-md`}>{status.msg}</div>}
       </div>
     )
