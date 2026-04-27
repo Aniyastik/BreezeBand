@@ -420,12 +420,12 @@ async def settle_day(admin: models.User = Depends(get_current_admin), db: Sessio
     return await process_settlement(db)
 
 
-# APP_MODE env var: set to 'pos' on the POS Railway deployment to redirect to /pos
-APP_MODE = os.environ.get("APP_MODE", "user")
 
 @app.get("/")
-def read_root():
-    if APP_MODE == "pos":
+def read_root(request: Request):
+    # If this is the POS deployment (detected by hostname), go straight to /pos
+    host = request.headers.get("host", "")
+    if "powerful-success" in host:
         return RedirectResponse(url="/pos")
     index_path = os.path.join(frontend_dist, "index.html")
     if os.path.exists(index_path):
@@ -434,10 +434,10 @@ def read_root():
 
 # React Router catch-all: bütün frontend səhifələri index.html-ə yönləndir
 @app.get("/{path:path}")
-def catch_all(path: str):
-    # If this is the POS deployment, redirect everything to /pos
-    if APP_MODE == "pos":
-        # Don't redirect API paths
+def catch_all(request: Request, path: str):
+    host = request.headers.get("host", "")
+    # If this is the POS deployment, redirect non-API paths to /pos
+    if "powerful-success" in host:
         api_paths = ["pos", "pay", "vendors", "profile", "history", "register_nfc",
                      "topup_bank", "settle_day", "seed", "db-status", "database_view",
                      "api", "static", "assets", "bank"]
