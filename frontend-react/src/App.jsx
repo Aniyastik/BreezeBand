@@ -93,15 +93,7 @@ function App() {
           <button onClick={handleLogout} style={{color: '#ffb3b3'}}>Logout</button>
         </nav>
 
-        <div style={{marginTop: 'auto', display: 'flex', justifyContent: 'center', gap: '16px', paddingBottom: '24px'}}>
-            {/* Simple flag circles using CSS */}
-            <div style={{width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(to bottom, #00b5e2 33%, #ed2939 33%, #ed2939 66%, #009b77 66%)', border: '2px solid white'}}></div>
-            <div style={{width: 32, height: 32, borderRadius: '50%', background: '#00247d', position: 'relative', border: '2px solid white', overflow: 'hidden'}}>
-               <div style={{position: 'absolute', top: 0, bottom: 0, left: '40%', right: '40%', background: '#cf142b'}}></div>
-               <div style={{position: 'absolute', left: 0, right: 0, top: '40%', bottom: '40%', background: '#cf142b'}}></div>
-            </div>
-            <div style={{width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(to bottom, white 33%, #0033a0 33%, #0033a0 66%, #da291c 66%)', border: '2px solid white'}}></div>
-        </div>
+
       </div>
       
       <Routes>

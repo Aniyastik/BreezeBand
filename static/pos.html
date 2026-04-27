@@ -360,7 +360,7 @@
   </div>
 </header>
 
-<main>
+<main id="mainContent" style="display: none;">
 
   <!-- Vendor -->
   <div class="card">
@@ -433,6 +433,31 @@
   </div>
 </div>
 
+<!-- Login Overlay -->
+<div class="overlay open" id="loginOverlay" style="background: rgba(216, 236, 248, 0.98);">
+  <div class="result-card" style="max-width: 380px;">
+    <div class="logo-main" style="font-size: 24px; text-align: center; margin-bottom: 24px;">SEA BREEZE<br><span class="logo-sub" style="font-size: 12px; margin-top: 8px; display: block;">POS LOGIN</span></div>
+    
+    <div style="text-align: left; margin-bottom: 16px;">
+      <label>Select Vendor / Stall</label>
+      <div class="select-wrap">
+        <select id="loginVendorSelect">
+          <option value="">Loading vendors…</option>
+        </select>
+      </div>
+    </div>
+    
+    <div style="text-align: left; margin-bottom: 24px;">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="Enter password" />
+    </div>
+    
+    <button id="loginBtn" style="width: 100%; padding: 16px; border-radius: 12px; border: none; background: var(--teal); color: #fff; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+      Login to POS
+    </button>
+  </div>
+</div>
+
 <script>
   const API = window.location.origin;
   let currentUid = null;
@@ -444,19 +469,42 @@
       const vRes = await fetch(`${API}/vendors`);
       if (vRes.ok) {
         vendors = await vRes.json();
-        const sel = document.getElementById('vendorSelect');
-        sel.innerHTML = vendors.map(v =>
-          `<option value="${v.id}">${v.name}</option>`
-        ).join('');
+        const optionsHtml = vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+        document.getElementById('vendorSelect').innerHTML = optionsHtml;
+        document.getElementById('loginVendorSelect').innerHTML = '<option value="">-- Select Vendor --</option>' + optionsHtml;
       } else {
-        document.getElementById('vendorSelect').innerHTML =
-          `<option value="1">Hovuz Bari (default)</option>`;
+        const defaultHtml = `<option value="1">Hovuz Bari (default)</option>`;
+        document.getElementById('vendorSelect').innerHTML = defaultHtml;
+        document.getElementById('loginVendorSelect').innerHTML = defaultHtml;
       }
     } catch(e) {
-      document.getElementById('vendorSelect').innerHTML =
-        `<option value="1">Hovuz Bari (default)</option>`;
+      const defaultHtml = `<option value="1">Hovuz Bari (default)</option>`;
+      document.getElementById('vendorSelect').innerHTML = defaultHtml;
+      document.getElementById('loginVendorSelect').innerHTML = defaultHtml;
     }
   }
+
+  // --- LOGIN LOGIC ---
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const vendorId = document.getElementById('loginVendorSelect').value;
+    const password = document.getElementById('loginPassword').value;
+
+    if (!vendorId) {
+      alert("Please select a vendor.");
+      return;
+    }
+
+    if (password !== "admin") {
+      alert("Incorrect password. Hint: admin");
+      return;
+    }
+
+    // Login successful
+    document.getElementById('vendorSelect').value = vendorId;
+    document.getElementById('vendorSelect').disabled = true; // Lock the main select
+    document.getElementById('loginOverlay').classList.remove('open');
+    document.getElementById('mainContent').style.display = 'flex';
+  });
 
   document.getElementById('chipGrid').addEventListener('click', e => {
     const chip = e.target.closest('.amount-chip');
