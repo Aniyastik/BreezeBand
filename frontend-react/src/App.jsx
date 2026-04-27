@@ -88,6 +88,7 @@ function App() {
         <nav className="sidebar-nav">
           <NavLink to="/dashboard" onClick={() => setSidebarOpen(false)}>Dashboard</NavLink>
           {isAdmin && <NavLink to="/admin" onClick={() => setSidebarOpen(false)}>Admin Panel</NavLink>}
+          {isAdmin && <a href="/pos" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)}>POS Terminal ↗</a>}
           <NavLink to="/register" onClick={() => setSidebarOpen(false)}>Register User</NavLink>
           <button onClick={handleLogout} style={{color: '#ffb3b3'}}>Logout</button>
         </nav>
