@@ -6,7 +6,7 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
   const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
   const [history, setHistory] = useState([])
-  const [status, setStatus] = useState({ msg: 'Scan wristband to access your account', type: '' })
+  const [status, setStatus] = useState({ msg: '', type: '' })
   const [isScanning, setIsScanning] = useState(false)
   const [manualUid, setManualUid] = useState('')
   const [topupAmount, setTopupAmount] = useState('')
@@ -60,8 +60,8 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
       if ('NDEFReader' in window) {
         setIsScanning(true);
         const ndef = new window.NDEFReader()
-        ndef.scan()
-        setStatus({ msg: "Bring the wristband closer to the phone...", type: "status-waiting" })
+        await ndef.scan()
+        setStatus({ msg: "Bring wristband closer to the phone...", type: "status-waiting" })
 
         ndef.onreadingerror = () => {
           setStatus({ msg: "Reading error. Please try again.", type: "status-error" });
@@ -105,112 +105,119 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
     }
   }
 
-  const handleLogout = () => {
-    setProfile(null);
-    localStorage.removeItem('userUid');
-    localStorage.removeItem('isAdmin');
-    setUid(null);
-    setIsAdmin(false);
-  };
-
   if (!profile) {
     return (
-      <div className="brutalist-card max-w-md">
-        <h2 className="title-block">User Dashboard</h2>
-        
-        <button 
-          className="btn-primary w-full mb-md" 
-          onClick={handleScan}
-          disabled={isScanning}
-        >
-          {isScanning ? 'Scanner Active...' : 'LOGIN (SCAN WRISTBAND)'}
-        </button>
-
-        <div className="divider-text">- OR -</div>
-
-        <button 
-          className="btn-secondary w-full mb-lg" 
-          onClick={() => navigate('/register')}
-        >
-          SIGN UP (CREATE ACCOUNT)
-        </button>
-
-        <div className="mt-xl text-center">
-          <p className="text-muted text-xs mb-sm">Manual Login (for testing):</p>
-          <div className="flex-row gap-sm justify-center">
-            <input 
-              type="text" 
-              className="brutalist-input text-sm py-sm px-sm"
-              style={{ width: '150px' }}
-              placeholder="E.g. A1-B2" 
-              value={manualUid}
-              onChange={(e) => setManualUid(e.target.value)}
-            />
-            <button className="btn-secondary text-sm py-sm px-md" onClick={handleManualSubmit}>Login</button>
-          </div>
+      <div className="splash-container">
+        <div className="splash-logo">
+          <div className="main">SEA BREEZE</div>
+          <div className="sub">RESORT</div>
         </div>
+        
+        <div className="w-full max-w-md" style={{zIndex: 10}}>
+          <button 
+            className="btn-primary w-full mb-md" 
+            onClick={handleScan}
+            disabled={isScanning}
+          >
+            {isScanning ? 'Scanner Active...' : 'LOGIN (SCAN WRISTBAND)'}
+          </button>
 
-        {status.msg && <div className={`status-msg ${status.type} mt-md`}>{status.msg}</div>}
+          <div className="divider-text" style={{color: 'var(--text-secondary)'}}>- OR -</div>
+
+          <button 
+            className="btn-secondary w-full mb-lg" 
+            onClick={() => navigate('/register')}
+          >
+            SIGN UP
+          </button>
+
+          <div className="mt-xl text-center" style={{backgroundColor: 'rgba(255,255,255,0.4)', padding: '16px', borderRadius: '12px'}}>
+            <p className="text-muted text-xs mb-sm">Manual Login (Testing):</p>
+            <div className="flex-row gap-sm justify-center">
+              <input 
+                type="text" 
+                className="modern-input text-sm py-sm px-sm"
+                style={{ width: '150px' }}
+                placeholder="E.g. A1-B2" 
+                value={manualUid}
+                onChange={(e) => setManualUid(e.target.value)}
+              />
+              <button className="btn-primary text-sm py-sm px-md" style={{minHeight: '44px'}} onClick={handleManualSubmit}>Login</button>
+            </div>
+          </div>
+
+          {status.msg && <div className={`status-msg ${status.type} mt-md`}>{status.msg}</div>}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="brutalist-card max-w-lg">
-      <h2 className="title-block">Welcome, {profile.name}!</h2>
-      <div className="neon-text mb-lg">Sticker ID: {profile.nfc_uid}</div>
-      
-      <div className="grid-2col mb-xl">
-          <div className="stat-panel">
-              <div className="stat-label">Real Bank Balance</div>
-              <div className="stat-value">{profile.bank_balance.toFixed(2)} AZN</div>
-              <div className="stat-subtext mb-sm">{profile.bank_account}</div>
-              <div className="flex-row gap-sm mt-md">
-                 <input 
-                   type="number" 
-                   className="brutalist-input text-xs py-sm px-sm flex-1" 
-                   placeholder="Amount (AZN)" 
-                   value={topupAmount}
-                   onChange={e => setTopupAmount(e.target.value)}
-                 />
-                 <button 
-                   className="btn-secondary text-xs py-sm px-sm" 
-                   onClick={handleTopup}
-                   disabled={isToppingUp}
-                 >
-                   {isToppingUp ? '...' : '+ Add'}
-                 </button>
-              </div>
-          </div>
-          <div className="stat-panel highlight-panel">
-              <div className="stat-label neon-text">Wristband (Spendable)</div>
-              <div className="stat-value neon-text">{profile.wallet_balance.toFixed(2)} AZN</div>
-              <div className="stat-subtext">Your Daily Limit</div>
-          </div>
+    <div className="w-full" style={{paddingBottom: '40px'}}>
+      <div className="hero-section">
+        <div className="hero-overlay"></div>
+        <div className="hero-content">
+          <div className="hero-title">WORLD CLASS<br/>RESORT ON THE<br/>CASPIAN SEA</div>
+        </div>
       </div>
+      
+      <div className="w-full max-w-md" style={{marginTop: '-40px'}}>
+        <div className="grid-2col mb-xl px-md" style={{padding: '0 16px'}}>
+            <div className="stat-card highlight">
+                <div className="stat-label" style={{color: 'rgba(255,255,255,0.8)'}}>Wristband</div>
+                <div className="stat-value">{profile.wallet_balance.toFixed(2)}</div>
+                <div className="stat-subtext" style={{color: 'rgba(255,255,255,0.8)'}}>AZN (Spendable)</div>
+            </div>
+            <div className="stat-card">
+                <div className="stat-label">Bank Balance</div>
+                <div className="stat-value" style={{color: 'var(--text-secondary)'}}>{profile.bank_balance.toFixed(2)}</div>
+                <div className="stat-subtext">AZN</div>
+            </div>
+        </div>
 
-      <h3 className="section-title">Today's Transactions</h3>
-      
-      {history.length === 0 ? (
-          <div className="empty-state">No transactions yet.</div>
-      ) : (
-          <div className="history-list">
-              {history.map(tx => (
-                  <div key={tx.id} className={`history-item ${tx.status === 'completed' ? 'border-success' : 'border-warning'}`}>
-                      <div className="flex-row justify-between mb-sm">
-                          <span className="font-bold">{tx.vendor_name}</span>
-                          <span className={`font-bold ${tx.status === 'completed' ? 'text-success' : 'text-warning'}`}>{tx.amount} AZN</span>
-                      </div>
-                      <div className="flex-row justify-between text-xs text-muted">
-                          <span>{new Date(tx.timestamp).toLocaleString('en-US')}</span>
-                          <span>{tx.status === 'completed' ? 'Settled' : 'Pending Settlement'}</span>
-                      </div>
-                  </div>
-              ))}
-          </div>
-      )}
-      
-      <button className="btn-secondary w-full mt-xl" onClick={handleLogout}>Logout</button>
+        <div className="px-md mb-xl" style={{padding: '0 16px'}}>
+            <div className="stat-card">
+                <div className="stat-label">Top up Bank Account</div>
+                <div className="flex-row gap-sm mt-sm">
+                   <input 
+                     type="number" 
+                     className="modern-input text-sm py-sm px-sm flex-1" 
+                     placeholder="Amount (AZN)" 
+                     value={topupAmount}
+                     onChange={e => setTopupAmount(e.target.value)}
+                   />
+                   <button 
+                     className="btn-primary text-sm py-sm px-sm" 
+                     style={{minHeight: '44px'}}
+                     onClick={handleTopup}
+                     disabled={isToppingUp}
+                   >
+                     {isToppingUp ? '...' : '+ Add'}
+                   </button>
+                </div>
+            </div>
+        </div>
+
+        <div className="px-md" style={{padding: '0 16px'}}>
+            <h3 className="section-title" style={{marginTop: 0}}>Today's Transactions</h3>
+            
+            {history.length === 0 ? (
+                <div className="empty-state">No transactions yet.</div>
+            ) : (
+                <div className="history-list">
+                    {history.map(tx => (
+                        <div key={tx.id} className={`history-item ${tx.status === 'completed' ? 'border-success' : 'border-warning'}`}>
+                            <div className="history-details">
+                                <span className="font-bold" style={{color: 'var(--text-primary)'}}>{tx.vendor_name}</span>
+                                <span className="text-xs text-muted mt-xs">{new Date(tx.timestamp).toLocaleString('en-US', {hour: 'numeric', minute: '2-digit'})} • {tx.status === 'completed' ? 'Settled' : 'Pending'}</span>
+                            </div>
+                            <span className={`history-amount ${tx.status === 'completed' ? 'text-success' : 'text-warning'}`}>{tx.amount} AZN</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -58,68 +58,70 @@ export default function Admin({ adminUid }) {
   }
 
   return (
-    <div className="brutalist-card max-w-lg">
-      <h2 className="title-block">Admin Dashboard</h2>
-      
-      <div className="admin-controls mb-xl">
-          <p className="text-muted mb-md text-sm">
-            The system automatically settles end of day every 2 minutes.
-          </p>
-          <button 
-            className="btn-primary w-full" 
-            onClick={handleSettle}
-            disabled={isProcessing}
-          >
-            {isProcessing ? 'Please wait...' : 'Manual Settlement'}
-          </button>
-      </div>
-
-      <div className="divider-thick mb-xl"></div>
-
-      <h3 className="section-title">User Search</h3>
-      <div className="input-group mb-lg">
-        <div className="flex-row gap-md">
-          <input 
-            type="text" 
-            className="brutalist-input"
-            placeholder="NFC ID (E.g. A1-B2)" 
-            value={searchUid}
-            onChange={(e) => setSearchUid(e.target.value)}
-          />
-          <button className="btn-secondary whitespace-nowrap" onClick={handleSearch}>Search</button>
+    <div className="w-full max-w-lg mt-xl" style={{padding: '0 16px', zIndex: 10}}>
+      <div className="modern-card">
+        <h2 className="section-title" style={{marginTop: 0}}>Admin Dashboard</h2>
+        
+        <div className="mb-xl">
+            <p className="text-muted mb-md text-sm">
+              The system automatically settles end of day every 2 minutes.
+            </p>
+            <button 
+              className="btn-primary w-full" 
+              onClick={handleSettle}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Please wait...' : 'Manual Settlement'}
+            </button>
         </div>
-      </div>
 
-      {status.msg && <div className={`status-msg ${status.type} mb-md`}>{status.msg}</div>}
+        <div style={{height: 1, backgroundColor: 'var(--border-color)', margin: '24px 0'}}></div>
 
-      {user && (
-        <div className="user-details-panel">
-            <div className="detail-row">
-              <span className="detail-label">Name:</span>
-              <span className="detail-value font-bold">{user.name}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">NFC ID:</span>
-              <span className="detail-value neon-text">{user.nfc_uid}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Role:</span>
-              <span className={`detail-value ${user.is_admin ? 'text-success' : 'text-muted'}`}>{user.is_admin ? 'Admin' : 'User'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Wristband Balance:</span>
-              <span className="detail-value text-success font-bold">{user.wallet_balance} AZN</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Bank Account:</span>
-              <span className="detail-value text-xs">{user.bank_account}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Real Bank Balance:</span>
-              <span className="detail-value font-bold">{user.bank_balance} AZN</span>
-            </div>
+        <h3 className="section-title" style={{fontSize: '18px'}}>User Search</h3>
+        <div className="input-group mb-lg">
+          <div className="flex-row gap-sm">
+            <input 
+              type="text" 
+              className="modern-input"
+              placeholder="NFC ID (E.g. A1-B2)" 
+              value={searchUid}
+              onChange={(e) => setSearchUid(e.target.value)}
+            />
+            <button className="btn-secondary whitespace-nowrap px-md py-sm" style={{minHeight: '44px'}} onClick={handleSearch}>Search</button>
+          </div>
         </div>
-      )}
+
+        {status.msg && <div className={`status-msg ${status.type} mb-md`}>{status.msg}</div>}
+
+        {user && (
+          <div style={{backgroundColor: 'rgba(41, 114, 136, 0.05)', borderRadius: '12px', padding: '16px'}}>
+              <div style={{display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-color)'}}>
+                <span className="text-muted text-xs text-uppercase font-bold">Name:</span>
+                <span className="font-bold">{user.name}</span>
+              </div>
+              <div style={{display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-color)'}}>
+                <span className="text-muted text-xs text-uppercase font-bold">NFC ID:</span>
+                <span style={{color: 'var(--text-secondary)', fontWeight: 600}}>{user.nfc_uid}</span>
+              </div>
+              <div style={{display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-color)'}}>
+                <span className="text-muted text-xs text-uppercase font-bold">Role:</span>
+                <span className={`${user.is_admin ? 'text-success' : 'text-muted'}`}>{user.is_admin ? 'Admin' : 'User'}</span>
+              </div>
+              <div style={{display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-color)'}}>
+                <span className="text-muted text-xs text-uppercase font-bold">Wristband Balance:</span>
+                <span className="text-success font-bold">{user.wallet_balance} AZN</span>
+              </div>
+              <div style={{display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-color)'}}>
+                <span className="text-muted text-xs text-uppercase font-bold">Bank Account:</span>
+                <span className="text-xs">{user.bank_account}</span>
+              </div>
+              <div style={{display: 'flex', justifyContent: 'space-between', padding: '12px 0'}}>
+                <span className="text-muted text-xs text-uppercase font-bold">Real Bank Balance:</span>
+                <span className="font-bold">{user.bank_balance} AZN</span>
+              </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

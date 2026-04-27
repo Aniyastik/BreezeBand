@@ -81,72 +81,75 @@ export default function Register({ adminUid }) {
   }
 
   return (
-    <div className="brutalist-card max-w-lg relative">
-      <button 
-        className="text-muted text-sm mb-md underline cursor-pointer"
-        onClick={() => navigate('/dashboard')}
-        style={{ background: 'none', border: 'none', padding: 0 }}
-      >
-        ← Back to Login
-      </button>
+    <div className="w-full max-w-md mt-xl" style={{padding: '0 16px', zIndex: 10}}>
+      <div className="modern-card">
+        <button 
+          className="text-muted text-sm mb-md cursor-pointer"
+          onClick={() => navigate('/dashboard')}
+          style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline' }}
+        >
+          ← Back
+        </button>
 
-      <h2 className="title-block">Register Wristband</h2>
-      
-      <p className="text-muted mb-lg text-sm">
-        Register a new NFC wristband to a user. This will automatically create a bank account for them.
-      </p>
+        <h2 className="section-title" style={{marginTop: 0}}>Register Wristband</h2>
+        
+        <p className="text-muted mb-lg text-sm">
+          Register a new NFC wristband to a user. This automatically creates a bank account.
+        </p>
 
-      <form onSubmit={handleSubmit} className="mb-lg">
-        <div className="input-group mb-md">
-          <label className="brutalist-label">User Name</label>
-          <input 
-            type="text" 
-            className="brutalist-input"
-            placeholder="E.g. John Doe" 
-            value={userName}
-            onChange={(e) => setUserName(e.target.value)}
-          />
-        </div>
-
-        <div className="input-group mb-md">
-          <label className="brutalist-label">NFC UID</label>
-          <div className="flex-row gap-md">
+        <form onSubmit={handleSubmit} className="mb-md">
+          <div className="input-group mb-md">
+            <label className="modern-label">Full Name</label>
             <input 
               type="text" 
-              className="brutalist-input flex-1"
-              placeholder="E.g. A1-B2-C3-D4" 
-              value={nfcUid}
-              onChange={(e) => setNfcUid(e.target.value)}
+              className="modern-input"
+              placeholder="E.g. John Doe" 
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
             />
-            <button 
-              type="button" 
-              className="btn-secondary whitespace-nowrap" 
-              onClick={handleScan}
-              disabled={isScanning}
-            >
-              {isScanning ? 'Scanning...' : 'Scan Tag'}
-            </button>
           </div>
-        </div>
 
-        <div className="input-group mb-lg">
-          <label className="brutalist-label">Initial Balance (AZN)</label>
-          <input 
-            type="number" 
-            step="0.01"
-            className="brutalist-input"
-            placeholder="0.00" 
-            value={initialBalance}
-            onChange={(e) => setInitialBalance(e.target.value)}
-          />
-        </div>
+          <div className="input-group mb-md">
+            <label className="modern-label">NFC ID Number</label>
+            <div className="flex-row gap-sm">
+              <input 
+                type="text" 
+                className="modern-input flex-1"
+                placeholder="A1-B2-C3-D4" 
+                value={nfcUid}
+                onChange={(e) => setNfcUid(e.target.value)}
+              />
+              <button 
+                type="button" 
+                className="btn-secondary whitespace-nowrap px-sm py-sm" 
+                style={{minHeight: '44px'}}
+                onClick={handleScan}
+                disabled={isScanning}
+              >
+                {isScanning ? '...' : 'Scan Tag'}
+              </button>
+            </div>
+          </div>
 
-        <button type="submit" className="btn-primary w-full">
-          Register User
-        </button>
-      </form>
+          <div className="input-group mb-xl">
+            <label className="modern-label">Initial Balance (AZN)</label>
+            <input 
+              type="number" 
+              step="0.01"
+              className="modern-input"
+              placeholder="0.00" 
+              value={initialBalance}
+              onChange={(e) => setInitialBalance(e.target.value)}
+            />
+          </div>
 
-      {status.msg && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
+          <button type="submit" className="btn-primary w-full">
+            Complete Registration
+          </button>
+        </form>
+
+        {status.msg && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
+      </div>
     </div>
   )
 }
