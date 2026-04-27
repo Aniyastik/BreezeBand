@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 import redis
 import httpx
 import asyncio
@@ -420,8 +420,13 @@ async def settle_day(admin: models.User = Depends(get_current_admin), db: Sessio
     return await process_settlement(db)
 
 
+# APP_MODE env var: set to 'pos' on the POS Railway deployment to redirect to /pos
+APP_MODE = os.environ.get("APP_MODE", "user")
+
 @app.get("/")
 def read_root():
+    if APP_MODE == "pos":
+        return RedirectResponse(url="/pos")
     index_path = os.path.join(frontend_dist, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
@@ -430,7 +435,14 @@ def read_root():
 # React Router catch-all: bütün frontend səhifələri index.html-ə yönləndir
 @app.get("/{path:path}")
 def catch_all(path: str):
-    # API və static yollarını atla
+    # If this is the POS deployment, redirect everything to /pos
+    if APP_MODE == "pos":
+        # Don't redirect API paths
+        api_paths = ["pos", "pay", "vendors", "profile", "history", "register_nfc",
+                     "topup_bank", "settle_day", "seed", "db-status", "database_view",
+                     "api", "static", "assets", "bank"]
+        if not any(path.startswith(p) for p in api_paths):
+            return RedirectResponse(url="/pos")
     index_path = os.path.join(frontend_dist, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
