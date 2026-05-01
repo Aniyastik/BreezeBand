@@ -18,7 +18,7 @@ function ProfileModal({ uid, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '350px'}}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{backgroundColor: 'var(--bg-panel)', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '350px'}}>
         <h3 style={{marginTop: 0}}>User Profile</h3>
         {loading ? <p>Loading...</p> : profile ? (
           <div style={{display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px'}}>
@@ -37,7 +37,7 @@ function ProfileModal({ uid, onClose }) {
 function NotifModal({ onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose} style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '350px'}}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{backgroundColor: 'var(--bg-panel)', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '350px'}}>
         <h3 style={{marginTop: 0}}>Notifications</h3>
         <p style={{color: 'var(--text-secondary)', fontSize: '14px', padding: '12px 0'}}>No new notifications at this time.</p>
         <button className="btn-primary w-full" style={{marginTop: '24px'}} onClick={onClose}>Close</button>
