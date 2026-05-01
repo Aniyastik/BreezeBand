@@ -215,8 +215,8 @@ def register_nfc(data: schemas.RegistrationCreate, db: Session = Depends(get_db)
     
     return {"status": "success", "message": "Qolbaq qeydiyyata alındı!", "balance": wallet.balance}
 
-@app.post("/topup_bank")
-def topup_bank(data: schemas.TopUpRequest, db: Session = Depends(get_db)):
+@app.post("/topup_wallet")
+def topup_wallet(data: schemas.TopUpRequest, db: Session = Depends(get_db)):
     nfc_uid = data.nfc_uid.lower().strip()
     wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
     if not wallet:
@@ -226,11 +226,18 @@ def topup_bank(data: schemas.TopUpRequest, db: Session = Depends(get_db)):
     if not bank_account:
         raise HTTPException(status_code=404, detail="Bank account not found")
         
-    bank_account.balance += data.amount
+    if bank_account.balance < data.amount:
+        raise HTTPException(status_code=400, detail="Insufficient bank funds")
+        
+    bank_account.balance -= data.amount
+    wallet.balance += data.amount
     db.commit()
     db.refresh(bank_account)
+    db.refresh(wallet)
     
-    return {"status": "success", "message": f"{data.amount} AZN added to real bank account!", "new_bank_balance": bank_account.balance}
+    r.set(f"wallet:{nfc_uid}:balance", wallet.balance)
+    
+    return {"status": "success", "message": f"{data.amount} AZN added to wristband from bank!", "new_wallet_balance": wallet.balance, "new_bank_balance": bank_account.balance}
 
 # ==============================================================================
 # HƏDƏF NÖQTƏSİ: Toxundur və Keç (Sıfır Ləngimə Mühərriki)
@@ -439,7 +446,7 @@ def catch_all(request: Request, path: str):
     # If this is the POS deployment, redirect non-API paths to /pos
     if "powerful-success" in host:
         api_paths = ["pos", "pay", "vendors", "profile", "history", "register_nfc",
-                     "topup_bank", "settle_day", "seed", "db-status", "database_view",
+                     "topup_wallet", "settle_day", "seed", "db-status", "database_view",
                      "api", "static", "assets", "bank"]
         if not any(path.startswith(p) for p in api_paths):
             return RedirectResponse(url="/pos")

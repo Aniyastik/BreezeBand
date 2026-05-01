@@ -3,11 +3,56 @@ import { useState, useEffect } from 'react'
 import UserDashboard from './components/UserDashboard'
 import Admin from './components/Admin'
 import Register from './components/Register'
+import { API_BASE } from './api'
+
+function ProfileModal({ uid, onClose }) {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetch(`${API_BASE}/profile/${uid}`)
+      .then(res => res.json())
+      .then(data => { setProfile(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [uid]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose} style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '350px'}}>
+        <h3 style={{marginTop: 0}}>User Profile</h3>
+        {loading ? <p>Loading...</p> : profile ? (
+          <div style={{display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px'}}>
+            <div><strong style={{color: 'var(--text-secondary)'}}>Name:</strong> {profile.name}</div>
+            <div><strong style={{color: 'var(--text-secondary)'}}>Wristband ID:</strong> {profile.nfc_uid.toUpperCase()}</div>
+            <div><strong style={{color: 'var(--text-secondary)'}}>Bank Account:</strong> {profile.bank_account}</div>
+            {profile.is_admin && <div style={{color: 'var(--text-accent)'}}><strong>Admin User</strong></div>}
+          </div>
+        ) : <p>Error loading profile.</p>}
+        <button className="btn-primary w-full" style={{marginTop: '24px'}} onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
+function NotifModal({ onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose} style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '350px'}}>
+        <h3 style={{marginTop: 0}}>Notifications</h3>
+        <p style={{color: 'var(--text-secondary)', fontSize: '14px', padding: '12px 0'}}>No new notifications at this time.</p>
+        <button className="btn-primary w-full" style={{marginTop: '24px'}} onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
 
 function App() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [uid, setUid] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
+  const [notifModalOpen, setNotifModalOpen] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -63,10 +108,10 @@ function App() {
           </div>
           
           <div className="header-icons">
-            <button className="icon-btn">
+            <button className="icon-btn" onClick={() => setProfileModalOpen(true)}>
               <UserIcon />
             </button>
-            <button className="icon-btn">
+            <button className="icon-btn" onClick={() => setNotifModalOpen(true)}>
               <BellIcon />
             </button>
           </div>
@@ -102,6 +147,9 @@ function App() {
         <Route path="/admin" element={isAdmin ? <Admin adminUid={uid} /> : <Navigate to="/dashboard" replace />} />
         <Route path="/register" element={<Register adminUid={uid} />} />
       </Routes>
+
+      {profileModalOpen && <ProfileModal uid={uid} onClose={() => setProfileModalOpen(false)} />}
+      {notifModalOpen && <NotifModal onClose={() => setNotifModalOpen(false)} />}
     </div>
   )
 }

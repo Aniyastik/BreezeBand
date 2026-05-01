@@ -19,7 +19,7 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
     }
     setIsToppingUp(true)
     try {
-      const response = await fetch(`${API_BASE}/topup_bank`, {
+      const response = await fetch(`${API_BASE}/topup_wallet`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -177,7 +177,7 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
 
         <div className="px-md mb-xl" style={{padding: '0 16px'}}>
             <div className="stat-card">
-                <div className="stat-label">Top up Bank Account</div>
+                <div className="stat-label">Top up Wristband from Bank</div>
                 <div className="flex-row gap-sm mt-sm">
                    <input 
                      type="number" 
