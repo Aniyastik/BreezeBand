@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../api'
+import FamilyWallet from './FamilyWallet'
 
 export default function UserDashboard({ setIsAdmin, setUid }) {
   const navigate = useNavigate()
@@ -158,6 +159,12 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
                 </div>
             )}
         </div>
+
+        {/* ── Family Wallet Panel ── */}
+        <div style={{marginTop: 32}}>
+          <FamilyWallet nfcUid={profile.nfc_uid} />
+        </div>
+
       </div>
     </div>
   )
