@@ -7,7 +7,7 @@ import httpx
 import asyncio
 import os
 import random
-from datetime import datetime
+from datetime import datetime, date as _date
 from sqlalchemy.orm import Session
 
 import models
@@ -22,11 +22,32 @@ from sqlalchemy import text
 
 models.Base.metadata.create_all(bind=engine)
 
-# Sadə migrasiya: is_admin və category sütunu yoxdursa əlavə et
+# Migrations: add columns / tables that may not exist yet
 try:
     with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("ALTER TABLE vendors ADD COLUMN IF NOT EXISTS category VARCHAR DEFAULT 'General';"))
+        conn.execute(text("ALTER TABLE users   ADD COLUMN IF NOT EXISTS is_admin       BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE vendors ADD COLUMN IF NOT EXISTS category       VARCHAR DEFAULT 'General';"))
+        conn.execute(text("ALTER TABLE vendors ADD COLUMN IF NOT EXISTS age_restricted BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS family_accounts (
+                id               SERIAL PRIMARY KEY,
+                master_wallet_id INTEGER UNIQUE NOT NULL REFERENCES wallets(id),
+                family_name      VARCHAR        NOT NULL,
+                created_at       TIMESTAMP      DEFAULT NOW()
+            );
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sub_accounts (
+                id                   SERIAL PRIMARY KEY,
+                family_id            INTEGER NOT NULL REFERENCES family_accounts(id),
+                child_wallet_id      INTEGER UNIQUE NOT NULL REFERENCES wallets(id),
+                child_name           VARCHAR NOT NULL,
+                age                  INTEGER NOT NULL,
+                daily_spending_limit FLOAT   NOT NULL DEFAULT 20.0,
+                current_daily_spend  FLOAT   NOT NULL DEFAULT 0.0,
+                spend_reset_date     DATE    NOT NULL DEFAULT CURRENT_DATE
+            );
+        """))
 except Exception as e:
     print(f"Migrasiya xətası (göz ardı edilə bilər): {e}")
 app = FastAPI(title="Sea Breeze Mini-Economy Engine")
@@ -87,6 +108,47 @@ def get_current_admin(x_admin_uid: str = Header(None), db: Session = Depends(get
     if not user or not user.is_admin:
         raise HTTPException(status_code=403, detail="Forbidden: Admin privileges required")
     return user
+
+
+# ── Family Wallets helpers ────────────────────────────────────────────────────
+
+def _resolve_nfc(nfc_uid: str, db: Session):
+    """
+    Returns (wallet, sub_account_or_None, master_wallet_or_None).
+    - Master  → (wallet, None, wallet)
+    - Child   → (child_wallet, sub_acct, master_wallet)
+    - Solo    → (wallet, None, None)
+    - Missing → (None, None, None)
+    """
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        return None, None, None
+
+    family = db.query(models.FamilyAccount).filter(
+        models.FamilyAccount.master_wallet_id == wallet.id
+    ).first()
+    if family:
+        return wallet, None, wallet   # master account
+
+    sub = db.query(models.SubAccount).filter(
+        models.SubAccount.child_wallet_id == wallet.id
+    ).first()
+    if sub:
+        master_wallet = db.query(models.Wallet).filter(
+            models.Wallet.id == sub.family.master_wallet_id
+        ).first()
+        return wallet, sub, master_wallet
+
+    return wallet, None, None         # solo (non-family) user
+
+
+def _maybe_reset_daily_spend(sub: models.SubAccount, db: Session):
+    """Lazy daily-spend reset — fires the first time a child pays after midnight."""
+    today = _date.today()
+    if sub.spend_reset_date != today:
+        sub.current_daily_spend = 0.0
+        sub.spend_reset_date    = today
+        db.add(sub)
 
 
 @app.get("/pos")
@@ -242,56 +304,232 @@ def topup_wallet(data: schemas.TopUpRequest, db: Session = Depends(get_db)):
 # ==============================================================================
 # HƏDƏF NÖQTƏSİ: Toxundur və Keç (Sıfır Ləngimə Mühərriki)
 # ==============================================================================
-@app.post("/pay", response_model=schemas.TransactionResponse)
+AGE_MINIMUM = 18  # minimum age for age-restricted vendors (bars, etc.)
+
+@app.post("/pay", response_model=schemas.FamilyTransactionResponse)
 def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(get_db)):
-    # NFC ID-ni lowercase edirik
+    """
+    Family-aware payment endpoint.
+
+    Decision tree:
+    1. Resolve NFC → master / child / solo
+    2. Child only:
+       a. Age-gate  → 403 if vendor.age_restricted and child.age < 18
+       b. Daily cap → 402 if amount exceeds remaining daily allowance
+    3. Balance check on the MASTER (or solo) wallet via Redis
+    4. Atomic Redis deduct + PostgreSQL write
+    5. Update child's current_daily_spend if applicable
+    """
     nfc_uid = payment.nfc_uid.lower().strip()
-    redis_key = f"wallet:{nfc_uid}:balance"
-    
-    current_balance = r.get(redis_key)
-    
-    # Redis-də yoxdursa, PostgreSQL-dən yoxla və Redis-ə cache et
-    if current_balance is None:
-        wallet_check = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
-        if wallet_check is None:
-            raise HTTPException(status_code=404, detail="Qolbaq tapılmadı və ya balans aktivləşdirilməyib")
-        # Redis-ə cache edirik ki, növbəti dəfə sürətli olsun
-        r.set(redis_key, wallet_check.balance)
-        current_balance = wallet_check.balance
-    
-    current_balance = float(current_balance)
-    if current_balance < payment.amount:
-        raise HTTPException(status_code=400, detail="Mövcud vəsait çatmır")
-        
-    # Redis-dən dərhal çıxırıq (sürət üçün)
-    new_balance = r.incrbyfloat(redis_key, -payment.amount)
-    
-    # Baza əməliyyatları
-    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+
+    # ── 1. Resolve identity ───────────────────────────────────────────────────
+    wallet, sub, master_wallet = _resolve_nfc(nfc_uid, db)
+    if wallet is None:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+
+    is_child   = sub is not None
+    pay_wallet = master_wallet if is_child else wallet  # funds always live here
+
+    # ── Fetch vendor (needed for both paths) ─────────────────────────────────
     vendor = db.query(models.Vendor).filter(models.Vendor.id == payment.vendor_id).first()
-    
-    if wallet and vendor:
-        wallet.balance -= payment.amount
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found.")
+
+    # ── 2a. Age gate (child only) ─────────────────────────────────────────────
+    if is_child and vendor.age_restricted and sub.age < AGE_MINIMUM:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"Age restriction: this terminal requires {AGE_MINIMUM}+. "
+                f"'{sub.child_name}' is {sub.age} years old."
+            )
+        )
+
+    # ── 2b. Daily spending limit (child only) ─────────────────────────────────
+    if is_child:
+        _maybe_reset_daily_spend(sub, db)
+        remaining_today = sub.daily_spending_limit - sub.current_daily_spend
+        if payment.amount > remaining_today:
+            raise HTTPException(
+                status_code=402,
+                detail=(
+                    f"Daily limit reached. '{sub.child_name}' has "
+                    f"{remaining_today:.2f} AZN remaining today "
+                    f"(limit: {sub.daily_spending_limit:.2f} AZN/day)."
+                )
+            )
+
+    # ── 3. Balance check on master/solo wallet (Redis fast-path) ─────────────
+    redis_key     = f"wallet:{pay_wallet.nfc_uid}:balance"
+    cached_bal    = r.get(redis_key)
+    if cached_bal is None:
+        r.set(redis_key, pay_wallet.balance)
+        cached_bal = pay_wallet.balance
+    current_balance = float(cached_bal)
+
+    if current_balance < payment.amount:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Insufficient funds. "
+                f"Balance: {current_balance:.2f} AZN, "
+                f"Requested: {payment.amount:.2f} AZN."
+            )
+        )
+
+    # ── 4. Atomic Redis deduction ─────────────────────────────────────────────
+    new_balance = r.incrbyfloat(redis_key, -payment.amount)
+
+    # ── 5. PostgreSQL write ───────────────────────────────────────────────────
+    try:
+        pay_wallet.balance     -= payment.amount
         vendor.virtual_balance += payment.amount
-        
+
+        if is_child:
+            sub.current_daily_spend += payment.amount
+
         new_tx = models.Transaction(
-            wallet_id=wallet.id,
-            vendor_id=vendor.id,
-            amount=payment.amount,
-            status="pending_settlement" # Günün sonu banka göndəriləcək
+            wallet_id = wallet.id,          # tapped wristband (audit trail)
+            vendor_id = vendor.id,
+            amount    = payment.amount,
+            status    = "pending_settlement"
         )
         db.add(new_tx)
         db.commit()
-    else:
-        # Xəta olarsa redis-i geri qaytar
-        r.incrbyfloat(redis_key, payment.amount)
-        raise HTTPException(status_code=404, detail="Bazada qolbaq və ya obyekt tapılmadı")
-    
+    except Exception as exc:
+        r.incrbyfloat(redis_key, payment.amount)  # rollback Redis
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"DB write failed: {exc}")
+
+    account_type = "child" if is_child else ("master" if master_wallet == wallet else "solo")
+
     return {
-        "status": "success",
-        "message": "Ödəniş uğurla tamamlandı! (Bank üçün gözləmədədir)",
-        "transaction_amount": payment.amount,
-        "remaining_balance": round(new_balance, 2)
+        "status"             : "success",
+        "message"            : (
+            f"Payment approved for {sub.child_name}." if is_child
+            else "Payment approved."
+        ),
+        "account_type"       : account_type,
+        "transaction_amount" : payment.amount,
+        "remaining_balance"  : round(new_balance, 2),
+        "child_daily_spend"  : round(sub.current_daily_spend, 2) if is_child else None,
+        "child_daily_limit"  : sub.daily_spending_limit if is_child else None,
+    }
+
+
+# ── Family registration endpoints ─────────────────────────────────────────────
+
+@app.post("/family/create")
+def create_family_account(data: schemas.FamilyAccountCreate, db: Session = Depends(get_db)):
+    """Register a parent wristband as the master of a new family account."""
+    nfc_uid = data.master_nfc_uid.lower().strip()
+    wallet  = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Master wristband not registered.")
+
+    existing = db.query(models.FamilyAccount).filter(
+        models.FamilyAccount.master_wallet_id == wallet.id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Family account already exists for this wristband.")
+
+    family = models.FamilyAccount(
+        master_wallet_id = wallet.id,
+        family_name      = data.family_name
+    )
+    db.add(family)
+    db.commit()
+    db.refresh(family)
+    return {"status": "success", "family_id": family.id, "family_name": family.family_name}
+
+
+@app.post("/family/add_child")
+def add_child_to_family(data: schemas.SubAccountCreate, db: Session = Depends(get_db)):
+    """Link a child wristband (already registered via /register_nfc) to a family account."""
+    master_uid = data.master_nfc_uid.lower().strip()
+    child_uid  = data.child_nfc_uid.lower().strip()
+
+    master_wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == master_uid).first()
+    if not master_wallet:
+        raise HTTPException(status_code=404, detail="Master wristband not found.")
+
+    family = db.query(models.FamilyAccount).filter(
+        models.FamilyAccount.master_wallet_id == master_wallet.id
+    ).first()
+    if not family:
+        raise HTTPException(
+            status_code=404,
+            detail="Family account not found. Create one first via POST /family/create."
+        )
+
+    child_wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == child_uid).first()
+    if not child_wallet:
+        raise HTTPException(
+            status_code=404,
+            detail="Child wristband not registered. Use POST /register_nfc first."
+        )
+
+    already = db.query(models.SubAccount).filter(
+        models.SubAccount.child_wallet_id == child_wallet.id
+    ).first()
+    if already:
+        raise HTTPException(status_code=409, detail="This wristband is already linked to a family account.")
+
+    sub = models.SubAccount(
+        family_id            = family.id,
+        child_wallet_id      = child_wallet.id,
+        child_name           = data.child_name,
+        age                  = data.age,
+        daily_spending_limit = data.daily_spending_limit,
+        current_daily_spend  = 0.0,
+        spend_reset_date     = _date.today()
+    )
+    db.add(sub)
+    db.commit()
+    db.refresh(sub)
+
+    return {
+        "status"              : "success",
+        "child_name"          : sub.child_name,
+        "age"                 : sub.age,
+        "daily_spending_limit": sub.daily_spending_limit,
+        "family_name"         : family.family_name,
+        "master_nfc_uid"      : master_uid
+    }
+
+
+@app.get("/family/info/{master_nfc_uid}")
+def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):
+    """Return the full family account with all children and their spend status."""
+    nfc_uid = master_nfc_uid.lower().strip()
+    wallet  = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+
+    family = db.query(models.FamilyAccount).filter(
+        models.FamilyAccount.master_wallet_id == wallet.id
+    ).first()
+    if not family:
+        raise HTTPException(status_code=404, detail="No family account for this wristband.")
+
+    children = []
+    for sub in family.sub_accounts:
+        cw = db.query(models.Wallet).filter(models.Wallet.id == sub.child_wallet_id).first()
+        children.append({
+            "child_name"          : sub.child_name,
+            "age"                 : sub.age,
+            "nfc_uid"             : cw.nfc_uid if cw else "?",
+            "daily_spending_limit": sub.daily_spending_limit,
+            "current_daily_spend" : sub.current_daily_spend,
+            "remaining_today"     : round(sub.daily_spending_limit - sub.current_daily_spend, 2),
+            "spend_reset_date"    : str(sub.spend_reset_date),
+        })
+
+    return {
+        "family_name"     : family.family_name,
+        "master_nfc_uid"  : nfc_uid,
+        "master_balance"  : wallet.balance,
+        "children"        : children,
     }
 
 @app.get("/database_view")
