@@ -9,38 +9,7 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
   const [status, setStatus] = useState({ msg: '', type: '' })
   const [isScanning, setIsScanning] = useState(false)
   const [manualUid, setManualUid] = useState('')
-  const [topupAmount, setTopupAmount] = useState('')
-  const [isToppingUp, setIsToppingUp] = useState(false)
 
-  const handleTopup = async () => {
-    if (!topupAmount || isNaN(topupAmount) || Number(topupAmount) <= 0) {
-      alert("Please enter a valid amount")
-      return
-    }
-    setIsToppingUp(true)
-    try {
-      const response = await fetch(`${API_BASE}/topup_wallet`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nfc_uid: profile.nfc_uid,
-          amount: parseFloat(topupAmount)
-        })
-      })
-      const data = await response.json()
-      if (response.ok) {
-        alert(data.message)
-        await fetchDashboardData(profile.nfc_uid)
-        setTopupAmount('')
-      } else {
-        alert("Error: " + data.detail)
-      }
-    } catch (err) {
-      alert("Top up failed: " + err.message)
-    } finally {
-      setIsToppingUp(false)
-    }
-  }
 
   const handleManualSubmit = async () => {
     const uid = manualUid.trim()
@@ -153,52 +122,24 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
   }
 
   return (
-    <div className="w-full" style={{paddingBottom: '40px'}}>
-      <div className="hero-section">
+    <div className="w-full" style={{paddingBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div className="hero-section" style={{width: '100%'}}>
         <div className="hero-overlay"></div>
         <div className="hero-content">
           <div className="hero-title">WORLD CLASS<br/>RESORT ON THE<br/>CASPIAN SEA</div>
         </div>
       </div>
       
-      <div className="w-full max-w-md" style={{marginTop: '-40px'}}>
-        <div className="grid-2col mb-xl px-md" style={{padding: '0 16px'}}>
+      <div style={{width: '100%', maxWidth: '440px', marginTop: '-40px', padding: '0 16px'}}>
+        <div className="mb-xl">
             <div className="stat-card highlight">
-                <div className="stat-label" style={{color: 'rgba(255,255,255,0.8)'}}>Wristband</div>
-                <div className="stat-value">{profile.wallet_balance.toFixed(2)}</div>
+                <div className="stat-label" style={{color: 'rgba(255,255,255,0.8)'}}>Wristband Balance</div>
+                <div className="stat-value" style={{fontSize: '36px'}}>{profile.wallet_balance.toFixed(2)}</div>
                 <div className="stat-subtext" style={{color: 'rgba(255,255,255,0.8)'}}>AZN (Spendable)</div>
             </div>
-            <div className="stat-card">
-                <div className="stat-label">Bank Balance</div>
-                <div className="stat-value" style={{color: 'var(--text-secondary)'}}>{profile.bank_balance.toFixed(2)}</div>
-                <div className="stat-subtext">AZN</div>
-            </div>
         </div>
 
-        <div className="px-md mb-xl" style={{padding: '0 16px'}}>
-            <div className="stat-card">
-                <div className="stat-label">Top up Wristband from Bank</div>
-                <div className="flex-row gap-sm mt-sm">
-                   <input 
-                     type="number" 
-                     className="modern-input text-sm py-sm px-sm flex-1" 
-                     placeholder="Amount (AZN)" 
-                     value={topupAmount}
-                     onChange={e => setTopupAmount(e.target.value)}
-                   />
-                   <button 
-                     className="btn-primary text-sm py-sm px-sm" 
-                     style={{minHeight: '44px'}}
-                     onClick={handleTopup}
-                     disabled={isToppingUp}
-                   >
-                     {isToppingUp ? '...' : '+ Add'}
-                   </button>
-                </div>
-            </div>
-        </div>
-
-        <div className="px-md" style={{padding: '0 16px'}}>
+        <div>
             <h3 className="section-title" style={{marginTop: 0}}>Today's Transactions</h3>
             
             {history.length === 0 ? (

@@ -68,6 +68,7 @@ h1, h2, h3, .serif-text {
 .app-container {
   display: flex;
   flex-direction: column;
+  align-items: center;
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
@@ -81,6 +82,7 @@ h1, h2, h3, .serif-text {
   padding: 16px 24px;
   position: relative;
   z-index: 50;
+  width: 100%;
 }
 
 .header-logo {
@@ -219,6 +221,7 @@ h1, h2, h3, .serif-text {
   align-items: center;
   flex: 1;
   padding: 24px;
+  width: 100%;
 }
 
 .splash-logo {
@@ -385,6 +388,7 @@ button:disabled {
 .hero-section {
   position: relative;
   height: 220px;
+  width: 100%;
   background-image: url('https://images.unsplash.com/photo-1540541338287-41700207dee6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');
   background-size: cover;
   background-position: center;
