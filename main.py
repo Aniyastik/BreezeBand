@@ -269,44 +269,56 @@ def seed_database(db: Session = Depends(get_db)):
 
 @app.post("/register_nfc")
 def register_nfc(data: schemas.RegistrationCreate, db: Session = Depends(get_db)):
-    # NFC ID-ni lowercase edirik (case mismatch problemini həll edir)
     nfc_uid = data.nfc_uid.lower().strip()
-    
-    # Yoxlayaq istifadəçi varmı
+
+    MOCK_BANK_BALANCE = 5000.0  # Fixed mock balance for all prototype accounts
+
+    # Check if user exists
     user = db.query(models.User).filter(models.User.name == data.user_name).first()
     if not user:
         user = models.User(name=data.user_name)
+        # Set password if provided
+        if data.password and data.password.strip():
+            user.password_hash = _hash_pw(data.password.strip())
         db.add(user)
         db.commit()
         db.refresh(user)
-        
-        # Real bank hesabı yaradırıq
+
+        # Create mock bank account with fixed balance
         bank_account = models.BankAccount(
-            user_id=user.id, 
-            account_number=f"AZ{random.randint(1000,9999)}0000{random.randint(1000,9999)}", 
-            balance=5000.0 # İlkin bank balansı (real pul)
+            user_id=user.id,
+            account_number=f"AZ{random.randint(1000,9999)}0000{random.randint(1000,9999)}",
+            balance=MOCK_BANK_BALANCE
         )
         db.add(bank_account)
         db.commit()
-    
-    # Qolbaq varmı
+    else:
+        # User exists — update password if provided and not already set
+        if data.password and data.password.strip() and not user.password_hash:
+            user.password_hash = _hash_pw(data.password.strip())
+            db.commit()
+
+    # Check wristband
     wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
     if wallet:
         if wallet.user_id != user.id:
-            raise HTTPException(status_code=400, detail="Bu qolbaq başqa istifadəçiyə aiddir!")
-        # Balansı artır
-        wallet.balance += data.initial_balance
+            raise HTTPException(status_code=400, detail="This wristband belongs to another user!")
     else:
-        wallet = models.Wallet(user_id=user.id, nfc_uid=nfc_uid, balance=data.initial_balance)
+        wallet = models.Wallet(user_id=user.id, nfc_uid=nfc_uid, balance=0.0)
         db.add(wallet)
-    
+
     db.commit()
     db.refresh(wallet)
-    
-    # Redis-i yenilə
+
+    # Update Redis
     r.set(f"wallet:{nfc_uid}:balance", wallet.balance)
-    
-    return {"status": "success", "message": "Qolbaq qeydiyyata alındı!", "balance": wallet.balance}
+
+    return {
+        "status": "success",
+        "message": "Wristband registered successfully!",
+        "balance": wallet.balance,
+        "has_password": bool(user.password_hash)
+    }
 
 @app.post("/topup_wallet")
 def topup_wallet(data: schemas.TopUpRequest, db: Session = Depends(get_db)):

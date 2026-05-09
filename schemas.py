@@ -15,7 +15,7 @@ class TransactionResponse(BaseModel):
 class RegistrationCreate(BaseModel):
     user_name: str
     nfc_uid: str
-    initial_balance: float = 0.0
+    password: Optional[str] = None   # Optional wristband password
 
 class TransactionHistory(BaseModel):
     id: int

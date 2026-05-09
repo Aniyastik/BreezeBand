@@ -6,7 +6,8 @@ export default function Register({ adminUid }) {
   const navigate = useNavigate()
   const [userName, setUserName] = useState('')
   const [nfcUid, setNfcUid] = useState('')
-  const [initialBalance, setInitialBalance] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
   const [status, setStatus] = useState({ msg: '', type: '' })
   const [isScanning, setIsScanning] = useState(false)
 
@@ -41,12 +42,17 @@ export default function Register({ adminUid }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!userName.trim() || !nfcUid.trim() || !initialBalance) {
-      setStatus({ msg: "Please fill in all fields.", type: "status-error" })
+    if (!userName.trim() || !nfcUid.trim()) {
+      setStatus({ msg: "Please fill in name and NFC ID.", type: "status-error" })
       return
     }
 
-    setStatus({ msg: "Registering user...", type: "status-waiting" })
+    if (password && password !== confirmPw) {
+      setStatus({ msg: "Passwords do not match.", type: "status-error" })
+      return
+    }
+
+    setStatus({ msg: "Registering wristband...", type: "status-waiting" })
 
     try {
       const headers = { 'Content-Type': 'application/json' }
@@ -60,17 +66,19 @@ export default function Register({ adminUid }) {
         body: JSON.stringify({
           user_name: userName.trim(),
           nfc_uid: nfcUid.trim(),
-          initial_balance: parseFloat(initialBalance)
+          password: password.trim() || null,
         })
       })
       
       const data = await response.json()
 
       if (response.ok) {
-        setStatus({ msg: `Success! ${data.message} Balance: ${data.balance} AZN`, type: "status-success" })
+        const pwNote = data.has_password ? ' (password protected 🔒)' : ''
+        setStatus({ msg: `✅ ${data.message}${pwNote}`, type: "status-success" })
         setUserName('')
         setNfcUid('')
-        setInitialBalance('')
+        setPassword('')
+        setConfirmPw('')
         setTimeout(() => navigate('/dashboard'), 2000)
       } else {
         setStatus({ msg: `Error: ${data.detail}`, type: "status-error" })
@@ -94,7 +102,7 @@ export default function Register({ adminUid }) {
         <h2 className="section-title" style={{marginTop: 0}}>Register Wristband</h2>
         
         <p className="text-muted mb-lg text-sm">
-          Register a new NFC wristband to a user. This automatically creates a bank account.
+          Register a new NFC wristband. A mock bank account with 5,000 AZN will be created automatically.
         </p>
 
         <form onSubmit={handleSubmit} className="mb-md">
@@ -131,17 +139,29 @@ export default function Register({ adminUid }) {
             </div>
           </div>
 
-          <div className="input-group mb-xl">
-            <label className="modern-label">Initial Balance (AZN)</label>
+          <div className="input-group mb-md">
+            <label className="modern-label">🔒 Wristband Password <span style={{fontWeight:400,opacity:0.6}}>(optional)</span></label>
             <input 
-              type="number" 
-              step="0.01"
+              type="password" 
               className="modern-input"
-              placeholder="0.00" 
-              value={initialBalance}
-              onChange={(e) => setInitialBalance(e.target.value)}
+              placeholder="Set a password to protect your band" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+
+          {password && (
+            <div className="input-group mb-xl">
+              <label className="modern-label">Confirm Password</label>
+              <input 
+                type="password" 
+                className="modern-input"
+                placeholder="Re-enter password" 
+                value={confirmPw}
+                onChange={(e) => setConfirmPw(e.target.value)}
+              />
+            </div>
+          )}
 
           <button type="submit" className="btn-primary w-full">
             Complete Registration
