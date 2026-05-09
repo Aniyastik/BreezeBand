@@ -772,6 +772,9 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
             if sub.family:
                 family_name = sub.family.family_name
 
+    loc_str = r.hget("ble_locations", nfc_uid.lower())
+    location_data = json.loads(loc_str) if loc_str else None
+
     return {
         "name": user.name,
         "nfc_uid": nfc_uid,
@@ -782,7 +785,8 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
         "has_password": bool(user.password_hash),
         "debt": wallet.debt or 0.0,
         "family_member_type": family_member_type,
-        "family_name": family_name
+        "family_name": family_name,
+        "location": location_data
     }
 
 @app.patch("/profile/{nfc_uid}")

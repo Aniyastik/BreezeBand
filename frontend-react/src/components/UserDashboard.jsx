@@ -300,6 +300,16 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
 
   const hasDebt = (profile.debt ?? 0) > 0
 
+  const timeSince = (dateStr) => {
+    if (!dateStr) return "";
+    const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} hr ago`;
+  };
+
   return (
     <div className="w-full" style={{paddingBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
 
@@ -385,6 +395,34 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
             {profile.family_member_type === 'master' && (
               <div style={{marginTop: 10, padding: '6px 10px', background: 'rgba(41,114,136,0.1)', borderRadius: 6, display: 'inline-block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)'}}>
                 👑 Family Plan Manager: {profile.family_name}
+              </div>
+            )}
+          </div>
+
+          {/* Live Location Tracker Card */}
+          <div className="stat-card" style={{background: 'rgba(255,255,255,0.7)', position: 'relative'}}>
+            <div style={{position: 'absolute', top: 16, right: 16, cursor: 'pointer', opacity: 0.6}} 
+                 onClick={() => loadProfileDirect(profile.nfc_uid)} title="Refresh Location">🔄</div>
+            <div className="stat-label" style={{display: 'flex', alignItems: 'center', gap: 6}}>
+              <span style={{color: '#297288', fontSize: 16}}>📡</span> Live Tracker
+            </div>
+            {profile.location ? (
+              <div style={{marginTop: 12}}>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: ((new Date() - new Date(profile.location.last_seen)) < 5 * 60 * 1000) ? 'rgba(24,128,56,0.1)' : 'rgba(227,116,0,0.1)',
+                  color: ((new Date() - new Date(profile.location.last_seen)) < 5 * 60 * 1000) ? '#188038' : '#e37400',
+                  padding: '8px 14px', borderRadius: 10, fontWeight: 700, fontSize: 15
+                }}>
+                  📍 {profile.location.gateway_id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                </div>
+                <div className="stat-subtext" style={{marginTop: 8, fontSize: 12}}>
+                  Last seen: {timeSince(profile.location.last_seen)}
+                </div>
+              </div>
+            ) : (
+              <div style={{marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.05)', color: '#666', padding: '8px 14px', borderRadius: 10, fontWeight: 600, fontSize: 14}}>
+                <span style={{filter: 'grayscale(1)'}}>📍</span> No signal detected
               </div>
             )}
           </div>
