@@ -308,21 +308,36 @@ def topup_wallet(data: schemas.TopUpRequest, db: Session = Depends(get_db)):
 # ==============================================================================
 # DAILY BALANCE PRE-AUTHORIZATION (HOLD SYSTEM)
 # ==============================================================================
+
+def _get_hold_period_date() -> _date:
+    """
+    The hold period resets at 3:00 AM each day.
+    Before 3 AM → still counts as the previous calendar day's period.
+    At/after 3 AM → new period starts.
+    """
+    now = datetime.now()
+    if now.hour < 3:
+        from datetime import timedelta
+        return (now - timedelta(days=1)).date()
+    return now.date()
+
+
 @app.post("/load_daily_balance", response_model=schemas.DailyLoadResponse)
 def load_daily_balance(data: schemas.DailyLoadRequest, db: Session = Depends(get_db)):
     """
-    Sets a temporary daily balance on the wristband from the user's bank card.
+    Pre-authorizes a daily balance hold from the user's bank card.
 
     Rules:
-    - Bank card must have >= requested amount, otherwise rejected.
-    - If valid: wristband balance is set to the requested amount as a HOLD.
+    - Bank card must have >= requested amount.
+    - ADDITIVE: calling multiple times in the same period adds to the hold.
     - The real bank card is NOT charged yet.
-    - At end of day (/settle_day), only the amount actually spent is charged.
-    - Unspent balance simply resets to 0 on the wristband — bank is untouched.
-    - Cannot load twice on the same day without settling first.
+    - Period resets at 3:00 AM each day (so night owls after midnight still
+      belong to the previous day's session).
+    - At end of day (/settle_day), only what was actually spent is charged.
+    - Unspent hold is released silently.
     """
-    nfc_uid = data.nfc_uid.lower().strip()
-    today   = _date.today()
+    nfc_uid     = data.nfc_uid.lower().strip()
+    period_date = _get_hold_period_date()
 
     wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
     if not wallet:
@@ -334,15 +349,11 @@ def load_daily_balance(data: schemas.DailyLoadRequest, db: Session = Depends(get
     if not bank_account:
         raise HTTPException(status_code=404, detail="Bank account not found.")
 
-    # Block double-loading on the same calendar day
-    if wallet.hold_date == today and wallet.daily_hold > 0:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Daily balance already loaded today ({wallet.daily_hold} AZN held). "
-                "Run /settle_day first to reset."
-            )
-        )
+    # If a new period has started (past 3 AM today), silently clear the old hold
+    if wallet.hold_date != period_date:
+        wallet.balance    = 0.0
+        wallet.daily_hold = 0.0
+        wallet.hold_date  = period_date
 
     # Bank card must have at least the requested amount
     if bank_account.balance < data.amount:
@@ -350,14 +361,14 @@ def load_daily_balance(data: schemas.DailyLoadRequest, db: Session = Depends(get
             status_code=400,
             detail=(
                 f"Bank card only has {bank_account.balance:.2f} AZN. "
-                f"Cannot pre-authorize {data.amount:.2f} AZN."
+                f"Cannot add {data.amount:.2f} AZN to hold."
             )
         )
 
-    # Grant the hold — bank balance is NOT touched here
-    wallet.balance    = data.amount
-    wallet.daily_hold = data.amount
-    wallet.hold_date  = today
+    # ADDITIVE: add the new amount on top of whatever is already held
+    wallet.balance    += data.amount
+    wallet.daily_hold += data.amount
+    wallet.hold_date   = period_date
     db.commit()
     db.refresh(wallet)
 
@@ -366,9 +377,9 @@ def load_daily_balance(data: schemas.DailyLoadRequest, db: Session = Depends(get
     return {
         "status"           : "success",
         "message"          : (
-            f"{data.amount} AZN pre-authorized as your daily balance. "
-            "Your real bank balance is untouched. "
-            "At end of day only what you spend will be charged."
+            f"+{data.amount} AZN added to your daily balance "
+            f"(total hold: {wallet.daily_hold:.2f} AZN). "
+            "Your real bank balance is untouched."
         ),
         "wristband_balance": wallet.balance,
         "bank_balance"     : bank_account.balance,

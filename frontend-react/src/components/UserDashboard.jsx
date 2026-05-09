@@ -185,33 +185,65 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
         <div className="desktop-right" style={{paddingTop: 0}}>
 
           {/* ── Load Daily Balance Card ── */}
-          <div className="stat-card" style={{marginBottom: 24, background: 'rgba(255,255,255,0.85)', border: '2px solid var(--accent)'}}>
-            <div className="stat-label" style={{color: 'var(--text-secondary)', fontWeight: 700, marginBottom: 4}}>💳 Load Daily Balance</div>
-            <div className="text-xs text-muted" style={{marginBottom: 12}}>
-              Your bank card has <strong>{profile.bank_balance?.toFixed(2) ?? '—'} AZN</strong>.
-              Load a daily budget — your card won't be charged until end of day.
-              Only what you <em>actually spend</em> gets deducted.
+          <div style={{
+            marginBottom: 24,
+            background: 'white',
+            borderRadius: 20,
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(41,114,136,0.12)',
+            border: '1px solid rgba(41,114,136,0.1)'
+          }}>
+            {/* Header strip */}
+            <div style={{
+              background: 'linear-gradient(135deg, #297288, #1a4f61)',
+              padding: '18px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{color: 'white', fontWeight: 700, fontSize: 16, letterSpacing: 0.3}}>Load Daily Balance</div>
+                <div style={{color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 2}}>Pre-authorize from your bank card · resets at 3 AM</div>
+              </div>
+              <div style={{
+                background: 'rgba(255,255,255,0.15)',
+                borderRadius: 12,
+                padding: '6px 12px',
+                fontSize: 12,
+                color: 'white',
+                fontWeight: 600,
+                whiteSpace: 'nowrap'
+              }}>
+                🏦 {profile.bank_balance?.toFixed(2) ?? '—'} AZN
+              </div>
             </div>
-            <div className="flex-row gap-sm" style={{alignItems: 'center'}}>
-              <input
-                type="number"
-                min="1"
-                className="modern-input text-sm py-sm px-sm"
-                style={{flex: 1}}
-                placeholder="Amount (AZN)"
-                value={loadAmount}
-                onChange={e => setLoadAmount(e.target.value)}
-              />
-              <button
-                className="btn-primary text-sm py-sm px-md"
-                style={{minHeight: '44px', whiteSpace: 'nowrap'}}
-                onClick={handleLoadDaily}
-                disabled={loadLoading}
-              >
-                {loadLoading ? 'Loading...' : 'Load'}
-              </button>
+
+            {/* Body */}
+            <div style={{padding: '18px 20px'}}>
+              <div style={{fontSize: 12, color: '#666', marginBottom: 14, lineHeight: 1.5}}>
+                Your bank card <strong>won't be charged</strong> now. Only what you actually spend today gets deducted at end of day. You can top up multiple times.
+              </div>
+              <div style={{display: 'flex', gap: 10, alignItems: 'center'}}>
+                <input
+                  type="number"
+                  min="1"
+                  className="modern-input"
+                  style={{flex: 1, fontSize: 15, padding: '12px 16px'}}
+                  placeholder="Enter amount (AZN)"
+                  value={loadAmount}
+                  onChange={e => setLoadAmount(e.target.value)}
+                />
+                <button
+                  className="btn-primary"
+                  style={{minHeight: '48px', padding: '0 24px', whiteSpace: 'nowrap', borderRadius: 10, fontSize: 14}}
+                  onClick={handleLoadDaily}
+                  disabled={loadLoading}
+                >
+                  {loadLoading ? '...' : '+ Add'}
+                </button>
+              </div>
+              {loadStatus.msg && <div className={`status-msg ${loadStatus.type}`} style={{marginTop: 10}}>{loadStatus.msg}</div>}
             </div>
-            {loadStatus.msg && <div className={`status-msg ${loadStatus.type} mt-sm`}>{loadStatus.msg}</div>}
           </div>
 
           <h3 className="section-title" style={{marginTop: 0}}>Today's Transactions</h3>
