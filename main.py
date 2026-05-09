@@ -658,6 +658,10 @@ def receive_location_ping(data: schemas.LocationPing):
     r.hset("ble_locations", data.band_id.lower().strip(), json.dumps(loc_data))
     return {"status": "success"}
 
+@app.get("/simulator")
+def get_hardware_simulator():
+    """Serves the manual BLE hardware simulator directly."""
+    return FileResponse("hardware_simulator/manual_controller.html")
 
 @app.get("/family/info/{master_nfc_uid}")
 def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):

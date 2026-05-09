@@ -157,7 +157,7 @@
         try {
             // Replace with your actual backend URL if testing remotely (e.g., Railway)
             // Note: Since this is an HTML file, CORS must be enabled on your FastAPI server
-            const response = await fetch('http://localhost:8000/api/location/ping', {
+            const response = await fetch('/api/location/ping', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
