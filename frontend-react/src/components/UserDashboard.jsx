@@ -580,4 +580,3 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
     </div>
   )
 }
-export default UserDashboard;
