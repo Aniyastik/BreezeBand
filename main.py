@@ -509,6 +509,13 @@ def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(ge
     current_balance = float(cached_bal)
 
     if current_balance < payment.amount:
+        # Fallback sync: if Redis is stale (e.g., due to manual DB edits), check PG directly
+        db.refresh(pay_wallet)
+        if pay_wallet.balance >= payment.amount:
+            r.set(redis_key, pay_wallet.balance)
+            current_balance = pay_wallet.balance
+
+    if current_balance < payment.amount:
         raise HTTPException(
             status_code=400,
             detail=(
