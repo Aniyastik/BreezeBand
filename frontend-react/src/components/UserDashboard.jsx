@@ -243,6 +243,27 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
     )
   }
 
+  const [debtPaying, setDebtPaying] = useState(false)
+  const [debtMsg, setDebtMsg]       = useState({ text: '', ok: true })
+
+  const handlePayDebt = async () => {
+    setDebtPaying(true)
+    setDebtMsg({ text: '', ok: true })
+    try {
+      const res = await fetch(`${API_BASE}/pay_debt/${profile.nfc_uid}`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Payment failed')
+      setDebtMsg({ text: `✅ ${data.message}`, ok: true })
+      setProfile(prev => ({ ...prev, debt: 0, bank_balance: data.new_bank_balance ?? prev.bank_balance }))
+    } catch (err) {
+      setDebtMsg({ text: `❌ ${err.message}`, ok: false })
+    } finally {
+      setDebtPaying(false)
+    }
+  }
+
+  const hasDebt = profile.debt && profile.debt > 0
+
   return (
     <div className="w-full" style={{paddingBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
 
@@ -254,7 +275,55 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
         </div>
       </div>
 
-      <div className="desktop-dashboard" style={{width: '100%'}}>
+      {/* ── DEBT BANNER ── */}
+      {hasDebt && (
+        <div style={{
+          width: '100%', maxWidth: 1100, margin: '0 auto',
+          padding: '0 40px',
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #d93025 0%, #a51d13 100%)',
+            borderRadius: 16, padding: '20px 24px',
+            marginTop: 20,
+            color: 'white',
+            boxShadow: '0 8px 32px rgba(217,48,37,0.3)',
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+              <span style={{fontSize:22}}>⚠️</span>
+              <div style={{fontFamily:'Playfair Display,serif',fontSize:18,fontWeight:700}}>Wristband Locked</div>
+            </div>
+            <div style={{fontSize:13,opacity:0.9,lineHeight:1.6,marginBottom:14}}>
+              Your bank account didn't have enough funds during settlement.
+              You owe <strong>{profile.debt.toFixed(2)} AZN</strong>. 
+              Your wristband is <strong>blocked</strong> until this debt is cleared.
+            </div>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+              <button onClick={handlePayDebt} disabled={debtPaying}
+                style={{
+                  padding:'12px 28px', border:'2px solid white', borderRadius:10,
+                  background:'rgba(255,255,255,0.15)', color:'white',
+                  fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700,
+                  cursor:'pointer', backdropFilter:'blur(4px)',
+                  opacity: debtPaying ? 0.7 : 1, transition:'all 0.2s',
+                }}>
+                {debtPaying ? 'Processing…' : `💳 Pay ${profile.debt.toFixed(2)} AZN Now`}
+              </button>
+              <span style={{fontSize:11,opacity:0.7}}>Charges your linked bank card automatically</span>
+            </div>
+            {debtMsg.text && (
+              <div style={{
+                marginTop:12, padding:'10px 14px', borderRadius:8,
+                background: debtMsg.ok ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                fontSize:13, fontWeight:600
+              }}>
+                {debtMsg.text}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="desktop-dashboard" style={{width: '100%', opacity: hasDebt ? 0.4 : 1, pointerEvents: hasDebt ? 'none' : 'auto'}}>
 
         {/* ── LEFT COLUMN: Balance + User Info ── */}
         <div className="desktop-left">

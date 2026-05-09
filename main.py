@@ -53,6 +53,7 @@ try:
         conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS daily_hold FLOAT DEFAULT 0.0;"))
         conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS hold_date  DATE;"))
         conn.execute(text("ALTER TABLE users   ADD COLUMN IF NOT EXISTS password_hash VARCHAR;"))
+        conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS debt FLOAT DEFAULT 0.0;"))
 except Exception as e:
     print(f"Migrasiya xətası (göz ardı edilə bilər): {e}")
 
@@ -440,6 +441,17 @@ def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(ge
     if wallet is None:
         raise HTTPException(status_code=404, detail="Wristband not found.")
 
+    # ── DEBT GATE: block payment if user has outstanding debt ──────────────
+    pay_wallet_for_debt = master_wallet if (sub is not None) else wallet
+    if pay_wallet_for_debt.debt and pay_wallet_for_debt.debt > 0:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"Wristband locked! Outstanding debt of {pay_wallet_for_debt.debt:.2f} AZN. "
+                f"Please clear your debt from the dashboard to continue."
+            )
+        )
+
     is_child   = sub is not None
     pay_wallet = master_wallet if is_child else wallet  # funds always live here
 
@@ -700,7 +712,8 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
         "bank_account": bank.account_number if bank else "Yoxdur",
         "bank_balance": bank.balance if bank else 0.0,
         "is_admin": user.is_admin,
-        "has_password": bool(user.password_hash)
+        "has_password": bool(user.password_hash),
+        "debt": wallet.debt or 0.0
     }
 
 @app.patch("/profile/{nfc_uid}")
@@ -788,6 +801,7 @@ def unlock_profile(data: schemas.UnlockRequest, db: Session = Depends(get_db)):
         "bank_balance"    : bank.balance if bank else 0.0,
         "is_admin"        : user.is_admin,
         "has_password"    : bool(user.password_hash),
+        "debt"            : wallet.debt or 0.0,
     }
 
 
@@ -822,6 +836,66 @@ def set_password(nfc_uid: str, data: schemas.SetPasswordRequest, db: Session = D
     db.commit()
     return {"status": "success", "message": msg}
 
+# ==============================================================================
+# DEBT PAYMENT
+# ==============================================================================
+
+@app.post("/pay_debt/{nfc_uid}")
+async def pay_debt(nfc_uid: str, db: Session = Depends(get_db)):
+    """
+    Attempt to charge the user's bank account for outstanding debt.
+    On success, clears the debt and unlocks the wristband.
+    """
+    nfc_uid = nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+
+    debt = wallet.debt or 0.0
+    if debt <= 0:
+        return {"status": "success", "message": "No outstanding debt.", "debt": 0.0}
+
+    bank = db.query(models.BankAccount).filter(
+        models.BankAccount.user_id == wallet.user_id
+    ).first()
+    if not bank:
+        raise HTTPException(status_code=404, detail="No bank account linked.")
+
+    if bank.balance < debt:
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"Insufficient bank balance. "
+                f"Debt: {debt:.2f} AZN, Bank balance: {bank.balance:.2f} AZN. "
+                f"Please top up your bank account first."
+            )
+        )
+
+    # Charge the bank
+    port = os.environ.get("PORT", 8000)
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://127.0.0.1:{port}/bank/charge",
+                json={"nfc_uid": nfc_uid, "amount": debt},
+                timeout=10.0
+            )
+        resp_data = response.json()
+        if response.status_code == 200 and resp_data.get("bank_status") == "approved":
+            wallet.debt = 0.0
+            db.commit()
+            return {
+                "status": "success",
+                "message": f"Debt of {debt:.2f} AZN paid! Your wristband is unlocked.",
+                "debt": 0.0,
+                "new_bank_balance": resp_data.get("new_bank_balance", bank.balance - debt)
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Bank declined the charge. Please try again later.")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Bank connection error: {e}")
+
+
 @app.get("/history/{nfc_uid}")
 def get_history(nfc_uid: str, db: Session = Depends(get_db)):
     nfc_uid = nfc_uid.lower().strip()
@@ -845,9 +919,11 @@ def get_history(nfc_uid: str, db: Session = Depends(get_db)):
 
 async def process_settlement(db: Session):
     """
-    End-of-day settlement.
+    End-of-day settlement with DEBT support.
     - Finds every wallet with an active daily hold.
     - Charges ONLY the amount actually spent to the real bank card.
+    - If the bank can't cover the full spend, charges what it can
+      and creates DEBT for the remainder (wristband locked until paid).
     - If nothing was spent, the hold is released silently (bank untouched).
     - Resets wristband balance, daily_hold, and hold_date for all wallets.
     """
@@ -859,7 +935,7 @@ async def process_settlement(db: Session):
     ).all()
 
     if not pending_txs and not held_wallets:
-        return {"status": "success", "message": "Gözləyən ödəniş yoxdur", "total_settled": 0.0}
+        return {"status": "success", "message": "No pending settlements.", "total_settled": 0.0}
 
     spent_by_wallet: defaultdict[int, float] = defaultdict(float)
     tx_by_wallet:    defaultdict[int, list]  = defaultdict(list)
@@ -869,6 +945,7 @@ async def process_settlement(db: Session):
 
     port           = os.environ.get("PORT", 8000)
     total_settled  = 0.0
+    total_debt     = 0.0
     all_wallet_ids = {w.id for w in held_wallets} | set(spent_by_wallet.keys())
 
     for wallet_id in all_wallet_ids:
@@ -879,26 +956,56 @@ async def process_settlement(db: Session):
         actually_spent = spent_by_wallet.get(wallet_id, 0.0)
 
         if actually_spent > 0:
-            try:
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        f"http://127.0.0.1:{port}/bank/charge",
-                        json={"nfc_uid": wallet.nfc_uid, "amount": actually_spent},
-                        timeout=10.0
-                    )
-                if response.status_code == 200 and response.json().get("bank_status") == "approved":
-                    for tx in tx_by_wallet[wallet_id]:
-                        tx.status = "completed"
-                    total_settled += actually_spent
-                    print(
-                        f"[SETTLEMENT] {wallet.nfc_uid}: charged {actually_spent:.2f} AZN "
-                        f"(held {wallet.daily_hold:.2f}, "
-                        f"{wallet.daily_hold - actually_spent:.2f} released)"
-                    )
-                else:
-                    print(f"[SETTLEMENT] Bank declined for {wallet.nfc_uid}")
-            except Exception as e:
-                print(f"[SETTLEMENT] Bank error for {wallet.nfc_uid}: {e}")
+            # Check how much the bank can actually cover
+            bank = db.query(models.BankAccount).filter(
+                models.BankAccount.user_id == wallet.user_id
+            ).first()
+            bank_available = bank.balance if bank else 0.0
+
+            if bank_available >= actually_spent:
+                # Bank can cover everything — full charge
+                charge_amount = actually_spent
+                debt_amount   = 0.0
+            else:
+                # Bank can only partially cover — charge what we can, rest is debt
+                charge_amount = bank_available
+                debt_amount   = round(actually_spent - bank_available, 2)
+
+            # Charge the bank for whatever it can cover
+            if charge_amount > 0:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        response = await client.post(
+                            f"http://127.0.0.1:{port}/bank/charge",
+                            json={"nfc_uid": wallet.nfc_uid, "amount": charge_amount},
+                            timeout=10.0
+                        )
+                    if response.status_code == 200 and response.json().get("bank_status") == "approved":
+                        total_settled += charge_amount
+                        print(
+                            f"[SETTLEMENT] {wallet.nfc_uid}: charged {charge_amount:.2f} AZN "
+                            f"(spent {actually_spent:.2f}, held {wallet.daily_hold:.2f})"
+                        )
+                    else:
+                        # Bank declined even the partial amount — entire spend becomes debt
+                        debt_amount = actually_spent
+                        print(f"[SETTLEMENT] Bank declined for {wallet.nfc_uid}, full amount becomes debt")
+                except Exception as e:
+                    debt_amount = actually_spent
+                    print(f"[SETTLEMENT] Bank error for {wallet.nfc_uid}: {e}, full amount becomes debt")
+
+            # Apply debt if any
+            if debt_amount > 0:
+                wallet.debt = round((wallet.debt or 0.0) + debt_amount, 2)
+                total_debt += debt_amount
+                print(
+                    f"[SETTLEMENT] {wallet.nfc_uid}: DEBT created — {debt_amount:.2f} AZN "
+                    f"(total debt: {wallet.debt:.2f})"
+                )
+
+            # Mark transactions as completed regardless (the spend happened)
+            for tx in tx_by_wallet[wallet_id]:
+                tx.status = "completed" if debt_amount == 0 else "settled_with_debt"
         else:
             print(
                 f"[SETTLEMENT] {wallet.nfc_uid}: nothing spent, "
@@ -915,8 +1022,9 @@ async def process_settlement(db: Session):
 
     return {
         "status"       : "success",
-        "message"      : "Günün sonu hesablaşması bitdi! Xərclənməyən məbləğlər bankdan ÇIXILMADI.",
-        "total_settled": round(total_settled, 2)
+        "message"      : f"Settlement complete. Settled: {total_settled:.2f} AZN, New debt: {total_debt:.2f} AZN.",
+        "total_settled": round(total_settled, 2),
+        "total_debt"   : round(total_debt, 2)
     }
 
 @app.post("/settle_day", response_model=schemas.SettlementResponse)
