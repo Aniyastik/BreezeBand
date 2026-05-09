@@ -7,13 +7,14 @@ from database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    is_admin = Column(Boolean, default=False)
+    id            = Column(Integer, primary_key=True, index=True)
+    name          = Column(String, index=True)
+    created_at    = Column(DateTime, default=datetime.datetime.utcnow)
+    is_admin      = Column(Boolean, default=False)
+    password_hash = Column(String, nullable=True)   # Optional wristband PIN
 
     # Əlaqələr
-    wallet = relationship("Wallet", back_populates="owner", uselist=False)
+    wallet       = relationship("Wallet",      back_populates="owner", uselist=False)
     bank_account = relationship("BankAccount", back_populates="owner", uselist=False)
 
 

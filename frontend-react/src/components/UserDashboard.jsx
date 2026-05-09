@@ -7,31 +7,100 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
   const [history, setHistory] = useState([])
-  const [status, setStatus] = useState({ msg: '', type: '' })
+  const [status, setStatus]   = useState({ msg: '', type: '' })
   const [isScanning, setIsScanning] = useState(false)
-  const [manualUid, setManualUid] = useState('')
+  const [manualUid, setManualUid]   = useState('')
   const [loadAmount, setLoadAmount] = useState('')
   const [loadStatus, setLoadStatus] = useState({ msg: '', type: '' })
   const [loadLoading, setLoadLoading] = useState(false)
 
+  // Password gate state
+  const [pendingUid, setPendingUid]       = useState(null)   // uid waiting for password
+  const [pendingName, setPendingName]     = useState('')     // user's name (for greeting)
+  const [pwInput, setPwInput]             = useState('')
+  const [pwError, setPwError]             = useState('')
+  const [pwLoading, setPwLoading]         = useState(false)
+
   // Auto-load profile from DB when uid is available (after refresh or re-login)
   useEffect(() => {
     if (propUid && !profile) {
-      fetchDashboardData(propUid)
+      beginLogin(propUid)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propUid])
 
+  // ── Step 1: check if password needed ──────────────────────────────────────
+  const beginLogin = async (uid) => {
+    uid = uid.toLowerCase().trim()
+    setStatus({ msg: 'Checking account…', type: 'status-waiting' })
+    try {
+      const res  = await fetch(`${API_BASE}/check/${uid}`)
+      if (!res.ok) throw new Error('Wristband not found')
+      const data = await res.json()
+
+      if (data.has_password) {
+        // Show password modal
+        setPendingUid(uid)
+        setPendingName(data.name)
+        setPwInput('')
+        setPwError('')
+        setStatus({ msg: '', type: '' })
+      } else {
+        // No password — go straight to unlock
+        await unlockWithPassword(uid, null)
+      }
+    } catch (err) {
+      setStatus({ msg: 'Error: ' + err.message, type: 'status-error' })
+    }
+  }
+
+  // ── Step 2: unlock (verify password + fetch full profile) ─────────────────
+  const unlockWithPassword = async (uid, password) => {
+    try {
+      const res  = await fetch(`${API_BASE}/profile/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nfc_uid: uid, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Unlock failed')
+
+      const histRes  = await fetch(`${API_BASE}/history/${uid}`)
+      const histData = await histRes.json()
+
+      setProfile(data)
+      setHistory(histData)
+      setPendingUid(null)
+      setStatus({ msg: '', type: '' })
+
+      localStorage.setItem('userUid', uid)
+      localStorage.setItem('isAdmin', data.is_admin ? 'true' : 'false')
+      setUid(uid)
+      setIsAdmin(data.is_admin)
+    } catch (err) {
+      throw err   // re-throw so callers can handle
+    }
+  }
+
+  // ── Password modal submit ──────────────────────────────────────────────────
+  const handlePasswordSubmit = async () => {
+    if (!pwInput.trim()) { setPwError('Please enter your password.'); return }
+    setPwLoading(true)
+    setPwError('')
+    try {
+      await unlockWithPassword(pendingUid, pwInput.trim())
+    } catch (err) {
+      setPwError(err.message || 'Incorrect password.')
+    } finally {
+      setPwLoading(false)
+    }
+  }
 
   const handleManualSubmit = async () => {
     const uid = manualUid.trim()
-    if (!uid) {
-      setStatus({ msg: "Enter NFC ID", type: "status-error" })
-      return
-    }
-    
-    setStatus({ msg: "Checking account...", type: "status-waiting" });
-    await fetchDashboardData(uid);
+    if (!uid) { setStatus({ msg: 'Enter NFC ID', type: 'status-error' }); return }
+    setStatus({ msg: 'Checking account…', type: 'status-waiting' })
+    await beginLogin(uid)
   }
 
   const handleScan = async () => {
@@ -50,8 +119,8 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
 
         ndef.onreading = async (event) => {
           const nfc_uid = event.serialNumber
-          setStatus({ msg: "Checking account...", type: "status-waiting" })
-          await fetchDashboardData(nfc_uid)
+          setStatus({ msg: 'Checking account…', type: 'status-waiting' })
+          await beginLogin(nfc_uid)
           setIsScanning(false);
         }
       } else {
@@ -63,28 +132,7 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
     }
   }
 
-  const fetchDashboardData = async (uid) => {
-    try {
-      const profRes = await fetch(`${API_BASE}/profile/${uid}`)
-      if (!profRes.ok) throw new Error("Profile not found")
-      const profData = await profRes.json()
-      
-      const histRes = await fetch(`${API_BASE}/history/${uid}`)
-      const histData = await histRes.json()
-      
-      setProfile(profData)
-      setHistory(histData)
-      setStatus({ msg: "", type: "" })
-      
-      localStorage.setItem('userUid', uid)
-      localStorage.setItem('isAdmin', profData.is_admin ? 'true' : 'false')
-      setUid(uid)
-      setIsAdmin(profData.is_admin)
-    } catch (error) {
-      setStatus({ msg: "Error: " + error.message, type: "status-error" })
-      setProfile(null)
-    }
-  }
+
 
   const handleLoadDaily = async () => {
     const amount = parseFloat(loadAmount)
@@ -113,6 +161,42 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   }
 
   if (!profile) {
+    // Password gate modal
+    if (pendingUid) {
+      return (
+        <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg-gradient, #d8ecf8)',padding:16}}>
+          <div style={{background:'white',borderRadius:20,overflow:'hidden',width:'100%',maxWidth:360,boxShadow:'0 24px 60px rgba(0,0,0,0.12)'}}>
+            <div style={{background:'linear-gradient(135deg,#297288,#1a4f61)',padding:'24px 24px 20px'}}>
+              <div style={{color:'rgba(255,255,255,0.7)',fontSize:12,marginBottom:4}}>Welcome back</div>
+              <div style={{color:'white',fontFamily:'Playfair Display,serif',fontSize:22,fontWeight:700}}>{pendingName}</div>
+              <div style={{color:'rgba(255,255,255,0.55)',fontSize:11,marginTop:6}}>🔒 This wristband is password protected</div>
+            </div>
+            <div style={{padding:'20px 24px 24px',display:'flex',flexDirection:'column',gap:14}}>
+              <div style={{fontSize:13,color:'#555'}}>Enter your password to access the dashboard.</div>
+              <input
+                type="password"
+                autoFocus
+                placeholder="Enter password"
+                value={pwInput}
+                onChange={e => setPwInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
+                style={{width:'100%',padding:'12px 16px',border:'1px solid rgba(41,114,136,0.3)',borderRadius:10,fontSize:15,fontFamily:'Inter,sans-serif',outline:'none',background:'rgba(41,114,136,0.03)'}}
+              />
+              {pwError && <div style={{fontSize:13,color:'#d93025',background:'rgba(217,48,37,0.07)',borderRadius:8,padding:'8px 12px'}}>{pwError}</div>}
+              <button
+                onClick={handlePasswordSubmit}
+                disabled={pwLoading}
+                style={{padding:'13px',border:'none',borderRadius:10,background:'linear-gradient(135deg,#297288,#1a4f61)',color:'white',fontFamily:'Inter,sans-serif',fontSize:15,fontWeight:600,cursor:'pointer',opacity:pwLoading?0.7:1,transition:'all 0.2s'}}>
+                {pwLoading ? 'Checking…' : 'Unlock Dashboard →'}
+              </button>
+              <button onClick={() => { setPendingUid(null); setPwInput(''); setPwError('') }}
+                style={{background:'none',border:'none',color:'#aaa',fontSize:13,cursor:'pointer',padding:'4px'}}>← Back</button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="splash-container">
         <div className="splash-logo">

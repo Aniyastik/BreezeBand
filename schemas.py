@@ -48,6 +48,19 @@ class UpdateProfileRequest(BaseModel):
     name: Optional[str] = None          # New display name
     bank_account: Optional[str] = None  # New bank account number
 
+class CheckUidResponse(BaseModel):
+    name: str
+    has_password: bool
+
+class UnlockRequest(BaseModel):
+    nfc_uid: str
+    password: Optional[str] = None   # omit if account has no password
+
+class SetPasswordRequest(BaseModel):
+    nfc_uid: str
+    new_password: str
+    current_password: Optional[str] = None  # required if a password already exists
+
 # ── Family Wallets / RBAC ─────────────────────────────────────────────────────
 
 class FamilyAccountCreate(BaseModel):

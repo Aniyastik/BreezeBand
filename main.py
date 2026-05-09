@@ -1,3 +1,4 @@
+import hashlib
 from fastapi import FastAPI, Depends, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -51,8 +52,18 @@ try:
         # Pre-authorization / daily hold columns
         conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS daily_hold FLOAT DEFAULT 0.0;"))
         conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS hold_date  DATE;"))
+        conn.execute(text("ALTER TABLE users   ADD COLUMN IF NOT EXISTS password_hash VARCHAR;"))
 except Exception as e:
     print(f"Migrasiya xətası (göz ardı edilə bilər): {e}")
+
+# ── Password helpers ──────────────────────────────────────────────────────────
+_PW_SALT = "seabreeze_nfc_salt_v1"
+
+def _hash_pw(password: str) -> str:
+    return hashlib.sha256(f"{_PW_SALT}:{password}".encode()).hexdigest()
+
+def _verify_pw(password: str, stored_hash: str) -> bool:
+    return _hash_pw(password) == stored_hash
 app = FastAPI(title="Sea Breeze Mini-Economy Engine")
 
 async def run_daily_settlement():
@@ -70,6 +81,22 @@ async def run_daily_settlement():
 @app.on_event("startup")
 async def start_scheduler():
     asyncio.create_task(run_daily_settlement())
+    # Seed Aniya's wristband password if not yet set
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        aniya_uid = "04:e1:f9:92:ca:2a:81"
+        wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == aniya_uid).first()
+        if wallet:
+            user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
+            if user and not user.password_hash:
+                user.password_hash = _hash_pw("aniya")
+                db.commit()
+                print("[startup] Aniya's wristband password set.")
+    except Exception as e:
+        print(f"[startup] Password seed error: {e}")
+    finally:
+        db.close()
 
 # CORS tənzimləmələri
 app.add_middleware(
@@ -711,6 +738,88 @@ def update_profile(nfc_uid: str, data: schemas.UpdateProfileRequest, db: Session
         "name": user.name,
         "bank_account": bank.account_number if bank else "Yoxdur",
     }
+
+# ==============================================================================
+# WRISTBAND PASSWORD / PIN SYSTEM
+# ==============================================================================
+
+@app.get("/check/{nfc_uid}", response_model=schemas.CheckUidResponse)
+def check_uid(nfc_uid: str, db: Session = Depends(get_db)):
+    """
+    Lightweight pre-check — returns name and whether a password is required.
+    Called before showing the password prompt on the frontend.
+    """
+    nfc_uid = nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+    user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
+    return {"name": user.name, "has_password": bool(user.password_hash)}
+
+
+@app.post("/profile/unlock")
+def unlock_profile(data: schemas.UnlockRequest, db: Session = Depends(get_db)):
+    """
+    Authenticates the wristband and returns the full profile.
+    If the account has no password, no password is needed.
+    If the account has a password, it must be supplied and correct.
+    """
+    nfc_uid = data.nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+
+    user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
+    bank = db.query(models.BankAccount).filter(models.BankAccount.user_id == wallet.user_id).first()
+
+    # Password check
+    if user.password_hash:
+        if not data.password:
+            raise HTTPException(status_code=401, detail="This wristband is password-protected. Please enter your password.")
+        if not _verify_pw(data.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
+
+    return {
+        "name"            : user.name,
+        "nfc_uid"         : nfc_uid,
+        "wallet_balance"  : wallet.balance,
+        "bank_account"    : bank.account_number if bank else "Yoxdur",
+        "bank_balance"    : bank.balance if bank else 0.0,
+        "is_admin"        : user.is_admin,
+        "has_password"    : bool(user.password_hash),
+    }
+
+
+@app.patch("/set_password/{nfc_uid}")
+def set_password(nfc_uid: str, data: schemas.SetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Set or change the wristband password.
+    - If no password yet: just supply new_password.
+    - If password exists: must supply current_password to verify before changing.
+    - To REMOVE a password: set new_password to "" (empty string).
+    """
+    nfc_uid = nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+
+    user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
+
+    # If already has a password, require current password
+    if user.password_hash:
+        if not data.current_password or not _verify_pw(data.current_password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Current password is incorrect.")
+
+    # Set or clear
+    if data.new_password.strip():
+        user.password_hash = _hash_pw(data.new_password.strip())
+        msg = "Password set successfully."
+    else:
+        user.password_hash = None
+        msg = "Password removed. Wristband is now unprotected."
+
+    db.commit()
+    return {"status": "success", "message": msg}
 
 @app.get("/history/{nfc_uid}")
 def get_history(nfc_uid: str, db: Session = Depends(get_db)):
