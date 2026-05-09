@@ -125,7 +125,7 @@
       margin-bottom: 10px;
     }
 
-    select, input[type="number"], input[type="text"] {
+    select, input[type="number"], input[type="text"], input[type="password"] {
       width: 100%;
       background: rgba(255,255,255,0.9);
       border: 1px solid var(--border);
@@ -354,17 +354,26 @@
         gap: 12px;
       }
 
-      /* Login: hide decorative left panel, compact form */
-      .login-left  { display: none !important; }
+      /* Login: transform left panel into a compact top teal banner */
+      .login-left {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 18px 24px !important;
+        min-width: auto !important;
+        flex: none !important;
+      }
+      .login-desc { display: none !important; }
       .login-wrapper {
-        flex-direction: column;
+        flex-direction: column !important;
         min-height: auto !important;
         border-radius: 20px !important;
         margin: 16px !important;
         width: calc(100% - 32px);
       }
       .login-right {
-        padding: 32px 24px !important;
+        padding: 24px !important;
         gap: 16px !important;
       }
 
@@ -505,7 +514,7 @@
         <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;opacity:0.7;">Resort · POS Terminal</div>
       </div>
 
-      <div style="position:relative;z-index:2;">
+      <div class="login-desc" style="position:relative;z-index:2;">
         <div style="font-size:13px;opacity:0.7;line-height:1.7;">
           Secure point-of-sale<br/>system for wristband<br/>NFC payments.
         </div>
@@ -513,6 +522,11 @@
           <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,0.6);"></div>
           <span style="font-size:12px;opacity:0.85;">System Online</span>
         </div>
+      </div>
+      <!-- Mobile-only status dot (always visible in banner) -->
+      <div style="position:relative;z-index:2;display:flex;align-items:center;gap:8px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,0.6);"></div>
+        <span style="font-size:12px;opacity:0.85;">Online</span>
       </div>
     </div>
 
@@ -532,17 +546,20 @@
       </div>
 
       <div>
-        <label>Vendor / Stall</label>
-        <div class="select-wrap">
-          <select id="loginVendorSelect">
-            <option value="">Loading vendors…</option>
+        <label style="display:flex;align-items:center;gap:6px;">🏪 Vendor / Stall</label>
+        <div class="select-wrap" style="margin-top:8px;">
+          <select id="loginVendorSelect" style="font-size:15px;">
+            <option value="">-- Select your stall --</option>
           </select>
         </div>
       </div>
 
       <div>
-        <label>Password</label>
-        <input type="password" id="loginPassword" placeholder="Enter password" />
+        <label style="display:flex;align-items:center;gap:6px;">🔒 Password</label>
+        <div style="position:relative;margin-top:8px;">
+          <input type="password" id="loginPassword" placeholder="Enter your password" style="padding-left:44px;" />
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;opacity:0.4;">🔑</span>
+        </div>
       </div>
 
       <button id="loginBtn" style="
