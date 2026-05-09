@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BreezeBand - Manual BLE Controller</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            width: 400px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #297288;
+            text-align: center;
+            font-weight: 800;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        select, input[type="text"], input[type="range"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        select:focus, input[type="text"]:focus {
+            border-color: #297288;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .rssi-value {
+            font-weight: bold;
+            color: #d93025;
+            min-width: 40px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #297288;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        button:hover {
+            background-color: #1e5566;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        .log {
+            margin-top: 24px;
+            padding: 16px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #297288;
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            min-height: 60px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📡 BLE Manual Controller</h2>
+    
+    <div class="form-group">
+        <label for="gatewayId">Select Gateway Location</label>
+        <select id="gatewayId">
+            <option value="pool_gateway_1">Pool Gateway (🏊‍♂️)</option>
+            <option value="lobby_gateway_1">Lobby Gateway (🛋️)</option>
+            <option value="beach_gateway_1">Beach Gateway (🏖️)</option>
+            <option value="restaurant_gateway_1">Restaurant Gateway (🍽️)</option>
+            <option value="gym_gateway_1">Gym Gateway (🏋️‍♂️)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="bandId">Wristband ID (NFC/BLE)</label>
+        <input type="text" id="bandId" value="A1B2" placeholder="e.g., A1B2">
+    </div>
+
+    <div class="form-group">
+        <label for="rssi">Signal Strength (RSSI in dBm)</label>
+        <div class="slider-container">
+            <!-- Range from -90 (weak, far) to -30 (strong, close) -->
+            <input type="range" id="rssi" min="-90" max="-30" value="-65" oninput="updateRssiLabel(this.value)">
+            <span class="rssi-value" id="rssiLabel">-65</span>
+        </div>
+    </div>
+
+    <button onclick="sendPing()">Send Telemetry Ping</button>
+
+    <div class="log" id="responseLog">Awaiting transmission...</div>
+</div>
+
+<script>
+    // Update the visual label for the slider
+    function updateRssiLabel(value) {
+        document.getElementById('rssiLabel').innerText = value;
+    }
+
+    // Function to simulate the hardware sending data to the server
+    async function sendPing() {
+        const gatewayId = document.getElementById('gatewayId').value;
+        const bandId = document.getElementById('bandId').value;
+        const rssi = parseInt(document.getElementById('rssi').value);
+        const logWindow = document.getElementById('responseLog');
+
+        // Construct the JSON payload EXACTLY as the physical hardware would
+        const payload = {
+            gateway_id: gatewayId,
+            band_id: bandId,
+            rssi: rssi
+        };
+
+        logWindow.innerHTML = `<span style="color: #666;">Sending payload to backend...</span>\n${JSON.stringify(payload, null, 2)}`;
+
+        try {
+            // Replace with your actual backend URL if testing remotely (e.g., Railway)
+            // Note: Since this is an HTML file, CORS must be enabled on your FastAPI server
+            const response = await fetch('http://localhost:8000/api/location/ping', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                // Read response safely even if it's empty
+                const data = await response.json().catch(() => ({ status: "OK (No JSON returned)" }));
+                logWindow.innerHTML = `<span style="color: #188038;">✓ Success (${response.status})</span>\nResponse:\n${JSON.stringify(data, null, 2)}`;
+            } else {
+                const errText = await response.text();
+                logWindow.innerHTML = `<span style="color: #d93025;">✗ Failed (${response.status})</span>\nError:\n${errText}`;
+            }
+        } catch (error) {
+            // This happens if the server is off, or CORS is blocking the request from the browser
+            logWindow.innerHTML = `<span style="color: #d93025;">✗ Network Error</span>\nCould not reach server. Is localhost:8000 running?\nDetails: ${error.message}`;
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -84,3 +84,11 @@ class FamilyTransactionResponse(BaseModel):
     remaining_balance: float             # master wallet balance after deduction
     child_daily_spend: Optional[float]   # None if master / solo
     child_daily_limit: Optional[float]
+
+# ── Tracking / BLE ────────────────────────────────────────────────────────────
+
+class LocationPing(BaseModel):
+    gateway_id: str
+    band_id: str
+    rssi: int
+

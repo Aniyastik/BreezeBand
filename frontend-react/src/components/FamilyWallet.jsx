@@ -8,6 +8,50 @@ const IconRefresh = () => <span style={{fontSize:16}}>🔄</span>
 const IconAdd     = () => <span style={{fontSize:16}}>＋</span>
 const IconShield  = () => <span style={{fontSize:14}}>🛡</span>
 
+function timeSince(dateStr) {
+  if (!dateStr) return "";
+  const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours} hr ago`;
+}
+
+function LocationBadge({ location }) {
+  if (!location) return (
+    <div style={{
+      marginTop: 10, display: 'flex', alignItems: 'center', gap: 6,
+      background: 'rgba(0,0,0,0.04)', padding: '6px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, color: '#888'
+    }}>
+      <span style={{fontSize: 14, filter: 'grayscale(1)'}}>📡</span> 
+      <span>No signal detected</span>
+    </div>
+  );
+  
+  const isRecent = (new Date() - new Date(location.last_seen)) < 5 * 60 * 1000; // 5 mins
+  const color = isRecent ? '#188038' : '#e37400';
+  const bg = isRecent ? 'rgba(24,128,56,0.08)' : 'rgba(227,116,0,0.08)';
+  
+  // Format "pool_gateway_1" -> "Pool Gateway"
+  const formattedGateway = location.gateway_id
+    .split('_')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+  
+  return (
+    <div style={{
+      marginTop: 10, display: 'flex', alignItems: 'center', gap: 6,
+      background: bg, padding: '6px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, color
+    }}>
+      <span style={{fontSize: 14}}>📍</span> 
+      <span>{formattedGateway}</span>
+      <span style={{opacity: 0.7, fontWeight: 500, marginLeft: 'auto'}}>seen {timeSince(location.last_seen)}</span>
+    </div>
+  )
+}
+
+
 /* ─── progress bar ──────────────────────────────────────────────────────────── */
 function SpendBar({ spent, limit }) {
   const pct = Math.min((spent / limit) * 100, 100)
@@ -66,6 +110,7 @@ function ChildCard({ child }) {
         </div>
       </div>
       <SpendBar spent={child.current_daily_spend} limit={child.daily_spending_limit} />
+      <LocationBadge location={child.location} />
     </div>
   )
 }
@@ -291,12 +336,18 @@ export default function FamilyWallet({ nfcUid }) {
       {/* Family name + master balance */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         background: 'linear-gradient(135deg,#297288,#1e5566)', borderRadius: 12,
-        padding: '14px 18px', marginBottom: 16, color: '#fff' }}>
+        padding: '14px 18px', marginBottom: 16, color: '#fff', position: 'relative' }}>
         <div>
           <div style={{ fontSize: 12, opacity: 0.75, letterSpacing: 1, textTransform: 'uppercase' }}>Family</div>
           <div style={{ fontFamily: 'Playfair Display,serif', fontSize: 17, fontWeight: 700 }}>
             {familyData.family_name}
           </div>
+          {familyData.master_location && (
+             <div style={{ marginTop: 8, fontSize: 11, background: 'rgba(255,255,255,0.15)', padding: '4px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+               📍 {familyData.master_location.gateway_id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} 
+               <span style={{opacity: 0.7, marginLeft: 4}}>({timeSince(familyData.master_location.last_seen)})</span>
+             </div>
+          )}
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, opacity: 0.75 }}>Shared Balance</div>

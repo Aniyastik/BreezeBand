@@ -8,6 +8,7 @@ import httpx
 import asyncio
 import os
 import random
+import json
 from datetime import datetime, date as _date
 from sqlalchemy.orm import Session
 
@@ -635,6 +636,19 @@ def add_child_to_family(data: schemas.SubAccountCreate, db: Session = Depends(ge
     }
 
 
+# ── Tracking / BLE ────────────────────────────────────────────────────────────
+
+@app.post("/api/location/ping")
+def receive_location_ping(data: schemas.LocationPing):
+    loc_data = {
+        "gateway_id": data.gateway_id,
+        "rssi": data.rssi,
+        "last_seen": datetime.now().isoformat()
+    }
+    r.hset("ble_locations", data.band_id.lower().strip(), json.dumps(loc_data))
+    return {"status": "success"}
+
+
 @app.get("/family/info/{master_nfc_uid}")
 def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):
     """Return the full family account with all children and their spend status."""
@@ -667,22 +681,31 @@ def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):
             if child_user:
                 child_user_name = child_user.name
                 
+        child_nfc = cw.nfc_uid if cw else "?"
+        
+        loc_str = r.hget("ble_locations", child_nfc.lower()) if cw else None
+        location_data = json.loads(loc_str) if loc_str else None
+
         children.append({
             "child_name"          : child_user_name,
             "age"                 : sub.age,
-            "nfc_uid"             : cw.nfc_uid if cw else "?",
+            "nfc_uid"             : child_nfc,
             "daily_spending_limit": sub.daily_spending_limit,
             "current_daily_spend" : sub.current_daily_spend,
             "remaining_today"     : round(sub.daily_spending_limit - sub.current_daily_spend, 2),
             "spend_reset_date"    : str(sub.spend_reset_date),
+            "location"            : location_data
         })
 
     master_wallet = db.query(models.Wallet).filter(models.Wallet.id == family.master_wallet_id).first()
+    master_loc_str = r.hget("ble_locations", master_wallet.nfc_uid.lower()) if master_wallet else None
+    master_location = json.loads(master_loc_str) if master_loc_str else None
 
     return {
         "family_name"     : family.family_name,
         "master_nfc_uid"  : master_wallet.nfc_uid if master_wallet else None,
         "master_balance"  : master_wallet.balance if master_wallet else 0.0,
+        "master_location" : master_location,
         "children"        : children,
         "is_master"       : is_master
     }
