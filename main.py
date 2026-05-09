@@ -682,6 +682,18 @@ class MockLLM:
             else:
                 return "You're of age! I highly recommend the 'Wine store and bar' for a great selection of drinks. It's the perfect place to relax."
         
+        # Semantic Route: Sweet/Dessert
+        if "sweet" in msg or "swwet" in msg or "dessert" in msg or "cake" in msg or "ice cream" in msg:
+            return "Craving something sweet? You can definitely find great desserts and sweets at Park Cafe or Polo Cafe! If you want a quick sweet snack, Shaurma No1 might also have some options."
+
+        # Semantic Route: Specific Venues
+        if "scalini" in msg or "shore house" in msg or "shaurma" in msg:
+            if "shaurma" in msg:
+                return "Shaurma No1 is a fantastic, budget-friendly option for a quick and tasty bite!"
+            if balance < 20:
+                return f"That's a great choice, but keeping your balance ({balance:.2f} AZN) in mind, it might be a bit pricey. Shaurma No1 or Park Cafe could be safer bets for your budget!"
+            return "Excellent choice! Both Scalini and Shore House offer a fantastic dining experience."
+
         # Semantic Route: Eat/Hungry
         if "eat" in msg or "hungry" in msg or "food" in msg or "restaurant" in msg or "dinner" in msg or "lunch" in msg:
             if balance < 20:
@@ -723,8 +735,11 @@ def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
     # 2. Context: Balance
     is_child = sub is not None
     if is_child:
-        master_wallet = db.query(models.Wallet).filter(models.Wallet.id == sub.family.master_wallet_id).first()
-        available_balance = min(master_wallet.balance, sub.daily_spending_limit - sub.current_daily_spend)
+        if wallet.balance > 0:
+            available_balance = wallet.balance
+        else:
+            master_wallet = db.query(models.Wallet).filter(models.Wallet.id == sub.family.master_wallet_id).first()
+            available_balance = min(master_wallet.balance, sub.daily_spending_limit - sub.current_daily_spend)
     else:
         available_balance = wallet.balance
         
