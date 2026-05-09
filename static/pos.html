@@ -346,6 +346,43 @@
     .tx-amount { font-weight: 700; font-size: 14px; color: var(--success); }
     .tx-amount.fail { color: var(--danger); }
     .empty-tx { text-align: center; color: var(--text-muted); font-size: 13px; padding: 16px 0; }
+
+    /* ── Mobile ────────────────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      main {
+        padding: 16px 12px 60px;
+        gap: 12px;
+      }
+
+      /* Login: hide decorative left panel, compact form */
+      .login-left  { display: none !important; }
+      .login-wrapper {
+        flex-direction: column;
+        min-height: auto !important;
+        border-radius: 20px !important;
+        margin: 16px !important;
+        width: calc(100% - 32px);
+      }
+      .login-right {
+        padding: 32px 24px !important;
+        gap: 16px !important;
+      }
+
+      /* Smaller NFC ring on mobile */
+      .nfc-ring  { width: 100px !important; height: 100px !important; }
+      .nfc-circle { width: 72px !important; height: 72px !important; font-size: 28px !important; }
+      .nfc-zone  { padding: 24px 16px !important; gap: 14px; }
+
+      /* Amount chips — tighter */
+      .amount-chip { font-size: 13px; padding: 9px 0; }
+
+      /* Header tighter */
+      header { padding: 14px 16px; }
+      .logo-main { font-size: 16px; }
+
+      /* Result card full width */
+      .result-card { padding: 28px 20px; }
+    }
   </style>
 </head>
 <body>
@@ -436,7 +473,7 @@
 
 <!-- Login Overlay -->
 <div class="overlay open" id="loginOverlay" style="background: rgba(216, 236, 248, 0.98); backdrop-filter: blur(20px);">
-  <div style="
+  <div class="login-wrapper" style="
     display: flex;
     width: 100%;
     max-width: 780px;
@@ -447,7 +484,7 @@
     margin: 16px;
   ">
     <!-- Left decorative panel -->
-    <div style="
+    <div class="login-left" style="
       flex: 1;
       background: linear-gradient(160deg, #297288 0%, #1e5566 100%);
       padding: 48px 36px;
@@ -480,7 +517,7 @@
     </div>
 
     <!-- Right form panel -->
-    <div style="
+    <div class="login-right" style="
       flex: 1.2;
       background: rgba(255,255,255,0.97);
       padding: 48px 40px;
