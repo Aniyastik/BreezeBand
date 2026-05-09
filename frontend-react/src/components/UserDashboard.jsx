@@ -10,6 +10,9 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
   const [status, setStatus] = useState({ msg: '', type: '' })
   const [isScanning, setIsScanning] = useState(false)
   const [manualUid, setManualUid] = useState('')
+  const [loadAmount, setLoadAmount] = useState('')
+  const [loadStatus, setLoadStatus] = useState({ msg: '', type: '' })
+  const [loadLoading, setLoadLoading] = useState(false)
 
 
   const handleManualSubmit = async () => {
@@ -72,6 +75,32 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
     } catch (error) {
       setStatus({ msg: "Error: " + error.message, type: "status-error" })
       setProfile(null)
+    }
+  }
+
+  const handleLoadDaily = async () => {
+    const amount = parseFloat(loadAmount)
+    if (!amount || amount <= 0) {
+      setLoadStatus({ msg: 'Enter a valid amount.', type: 'status-error' })
+      return
+    }
+    setLoadLoading(true)
+    setLoadStatus({ msg: 'Checking bank card...', type: 'status-waiting' })
+    try {
+      const res = await fetch(`${API_BASE}/load_daily_balance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nfc_uid: profile.nfc_uid, amount })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Failed')
+      setLoadStatus({ msg: `✅ ${amount} AZN loaded! Bank balance unchanged.`, type: 'status-success' })
+      setProfile(prev => ({ ...prev, wallet_balance: data.wristband_balance, bank_balance: data.bank_balance }))
+      setLoadAmount('')
+    } catch (err) {
+      setLoadStatus({ msg: `❌ ${err.message}`, type: 'status-error' })
+    } finally {
+      setLoadLoading(false)
     }
   }
 
@@ -141,6 +170,36 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
         </div>
 
         <div>
+            {/* ── Load Daily Balance Card ── */}
+            <div className="stat-card" style={{marginBottom: 24, background: 'rgba(255,255,255,0.85)', border: '2px solid var(--accent)'}}>
+              <div className="stat-label" style={{color: 'var(--accent)', fontWeight: 700, marginBottom: 4}}>💳 Load Daily Balance</div>
+              <div className="text-xs text-muted" style={{marginBottom: 12}}>
+                Your bank card has <strong>{profile.bank_balance?.toFixed(2) ?? '—'} AZN</strong>.
+                Load a daily budget — your card won't be charged until end of day.
+                Only what you <em>actually spend</em> gets deducted.
+              </div>
+              <div className="flex-row gap-sm" style={{alignItems: 'center'}}>
+                <input
+                  type="number"
+                  min="1"
+                  className="modern-input text-sm py-sm px-sm"
+                  style={{flex: 1}}
+                  placeholder="Amount (AZN)"
+                  value={loadAmount}
+                  onChange={e => setLoadAmount(e.target.value)}
+                />
+                <button
+                  className="btn-primary text-sm py-sm px-md"
+                  style={{minHeight: '44px', whiteSpace: 'nowrap'}}
+                  onClick={handleLoadDaily}
+                  disabled={loadLoading}
+                >
+                  {loadLoading ? 'Loading...' : 'Load'}
+                </button>
+              </div>
+              {loadStatus.msg && <div className={`status-msg ${loadStatus.type} mt-sm`}>{loadStatus.msg}</div>}
+            </div>
+
             <h3 className="section-title" style={{marginTop: 0}}>Today's Transactions</h3>
             
             {history.length === 0 ? (
