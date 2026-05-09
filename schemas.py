@@ -44,6 +44,10 @@ class DailyLoadResponse(BaseModel):
     bank_balance: float   # Real bank balance — shown for confirmation, NOT deducted
     daily_hold: float
 
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None          # New display name
+    bank_account: Optional[str] = None  # New bank account number
+
 # ── Family Wallets / RBAC ─────────────────────────────────────────────────────
 
 class FamilyAccountCreate(BaseModel):

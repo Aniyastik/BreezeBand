@@ -5,30 +5,130 @@ import Admin from './components/Admin'
 import Register from './components/Register'
 import { API_BASE } from './api'
 
-function ProfileModal({ uid, onClose }) {
+function ProfileModal({ uid, onClose, onProfileUpdated }) {
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  
+  const [loading, setLoading]   = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBank, setEditBank] = useState('');
+  const [saving, setSaving]     = useState(false);
+  const [saveMsg, setSaveMsg]   = useState({ text: '', ok: true });
+
   useEffect(() => {
     fetch(`${API_BASE}/profile/${uid}`)
       .then(res => res.json())
-      .then(data => { setProfile(data); setLoading(false); })
+      .then(data => {
+        setProfile(data);
+        setEditName(data.name);
+        setEditBank(data.bank_account);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [uid]);
 
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveMsg({ text: '', ok: true });
+    try {
+      const res = await fetch(`${API_BASE}/profile/${uid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName, bank_account: editBank }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Save failed');
+      setProfile(prev => ({ ...prev, name: data.name, bank_account: data.bank_account }));
+      setSaveMsg({ text: '✅ Profile updated!', ok: true });
+      setEditMode(false);
+      if (onProfileUpdated) onProfileUpdated(data.name);
+    } catch (err) {
+      setSaveMsg({ text: `❌ ${err.message}`, ok: false });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const teal = 'var(--text-secondary)';
+  const fieldStyle = { display: 'flex', flexDirection: 'column', gap: 4 };
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: teal, textTransform: 'uppercase', letterSpacing: 1 };
+  const valueStyle = { fontSize: 15, color: '#1a1a1a', fontWeight: 500 };
+  const inputStyle = {
+    width: '100%', padding: '10px 14px', fontSize: 14,
+    border: '1px solid rgba(41,114,136,0.3)', borderRadius: 8,
+    fontFamily: 'Inter, sans-serif', outline: 'none',
+    background: 'rgba(41,114,136,0.04)'
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose} style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{backgroundColor: 'var(--bg-panel)', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '350px'}}>
-        <h3 style={{marginTop: 0}}>User Profile</h3>
-        {loading ? <p>Loading...</p> : profile ? (
-          <div style={{display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px'}}>
-            <div><strong style={{color: 'var(--text-secondary)'}}>Name:</strong> {profile.name}</div>
-            <div><strong style={{color: 'var(--text-secondary)'}}>Wristband ID:</strong> {profile.nfc_uid.toUpperCase()}</div>
-            <div><strong style={{color: 'var(--text-secondary)'}}>Bank Account:</strong> {profile.bank_account}</div>
-            {profile.is_admin && <div style={{color: 'var(--text-accent)'}}><strong>Admin User</strong></div>}
+    <div onClick={onClose} style={{position:'fixed',inset:0,backgroundColor:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'white',padding:0,borderRadius:20,width:'90%',maxWidth:380,overflow:'hidden',boxShadow:'0 24px 60px rgba(0,0,0,0.15)'}}>
+
+        {/* Header */}
+        <div style={{background:'linear-gradient(135deg,#297288,#1a4f61)',padding:'20px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div style={{color:'white',fontFamily:'Playfair Display,serif',fontSize:18,fontWeight:700}}>My Profile</div>
+            <div style={{color:'rgba(255,255,255,0.6)',fontSize:11,marginTop:2}}>NFC: {uid?.toUpperCase()}</div>
           </div>
-        ) : <p>Error loading profile.</p>}
-        <button className="btn-primary w-full" style={{marginTop: '24px'}} onClick={onClose}>Close</button>
+          {!editMode && <button onClick={() => { setEditMode(true); setSaveMsg({ text:'',ok:true }); }} style={{background:'rgba(255,255,255,0.15)',border:'none',color:'white',borderRadius:8,padding:'6px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Edit</button>}
+        </div>
+
+        {/* Body */}
+        <div style={{padding:'20px 24px',display:'flex',flexDirection:'column',gap:16}}>
+          {loading ? <p style={{color:'#666',textAlign:'center'}}>Loading…</p> : !profile ? <p style={{color:'#d93025'}}>Error loading profile.</p> : (
+            <>
+              {/* Name */}
+              <div style={fieldStyle}>
+                <div style={labelStyle}>Display Name</div>
+                {editMode
+                  ? <input style={inputStyle} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Your name" />
+                  : <div style={valueStyle}>{profile.name}</div>}
+              </div>
+
+              {/* Bank Account */}
+              <div style={fieldStyle}>
+                <div style={labelStyle}>Bank Account Number</div>
+                {editMode
+                  ? <input style={inputStyle} value={editBank} onChange={e => setEditBank(e.target.value)} placeholder="e.g. AZ12 0000 1234 5678" />
+                  : <div style={{...valueStyle, fontFamily:'monospace', fontSize:13}}>{profile.bank_account}</div>}
+              </div>
+
+              {/* Admin badge */}
+              {profile.is_admin && (
+                <div style={{background:'rgba(41,114,136,0.08)',borderRadius:8,padding:'8px 12px',fontSize:12,color:teal,fontWeight:600}}>
+                  ⚡ Admin User
+                </div>
+              )}
+
+              {/* Save message */}
+              {saveMsg.text && (
+                <div style={{fontSize:13,fontWeight:600,color:saveMsg.ok?'#188038':'#d93025',background:saveMsg.ok?'rgba(24,128,56,0.08)':'rgba(217,48,37,0.08)',borderRadius:8,padding:'8px 12px'}}>
+                  {saveMsg.text}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer buttons */}
+        <div style={{padding:'0 24px 20px',display:'flex',gap:8}}>
+          {editMode ? (
+            <>
+              <button onClick={() => { setEditMode(false); setEditName(profile?.name||''); setEditBank(profile?.bank_account||''); setSaveMsg({text:'',ok:true}); }}
+                style={{flex:1,padding:'12px',border:'1px solid rgba(41,114,136,0.3)',borderRadius:10,background:'white',color:'#666',fontFamily:'Inter,sans-serif',fontSize:14,cursor:'pointer'}}>
+                Cancel
+              </button>
+              <button onClick={handleSave} disabled={saving}
+                style={{flex:2,padding:'12px',border:'none',borderRadius:10,background:'linear-gradient(135deg,#297288,#1a4f61)',color:'white',fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,cursor:'pointer',opacity:saving?0.7:1}}>
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </>
+          ) : (
+            <button onClick={onClose}
+              style={{flex:1,padding:'12px',border:'none',borderRadius:10,background:'linear-gradient(135deg,#297288,#1a4f61)',color:'white',fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+              Close
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

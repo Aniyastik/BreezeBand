@@ -675,6 +675,43 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
         "is_admin": user.is_admin
     }
 
+@app.patch("/profile/{nfc_uid}")
+def update_profile(nfc_uid: str, data: schemas.UpdateProfileRequest, db: Session = Depends(get_db)):
+    """Update the user's display name and/or bank account number."""
+    nfc_uid = nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+
+    user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
+    bank = db.query(models.BankAccount).filter(models.BankAccount.user_id == wallet.user_id).first()
+
+    if data.name is not None:
+        name = data.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Name cannot be empty.")
+        user.name = name
+
+    if data.bank_account is not None:
+        acct = data.bank_account.strip()
+        if not acct:
+            raise HTTPException(status_code=400, detail="Bank account cannot be empty.")
+        if bank:
+            bank.account_number = acct
+        else:
+            # Create a bank account if the user doesn't have one yet
+            bank = models.BankAccount(user_id=user.id, account_number=acct, balance=0.0)
+            db.add(bank)
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "status": "success",
+        "name": user.name,
+        "bank_account": bank.account_number if bank else "Yoxdur",
+    }
+
 @app.get("/history/{nfc_uid}")
 def get_history(nfc_uid: str, db: Session = Depends(get_db)):
     nfc_uid = nfc_uid.lower().strip()
