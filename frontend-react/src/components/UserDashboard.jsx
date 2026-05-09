@@ -162,16 +162,18 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   return (
     <div className="w-full" style={{paddingBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
 
+      {/* ── Full-width Hero Banner ── */}
+      <div className="hero-section" style={{width: '100%', borderRadius: 0, marginBottom: 0}}>
+        <div className="hero-overlay"></div>
+        <div className="hero-content">
+          <div className="hero-title">WORLD CLASS<br/>RESORT ON THE<br/>CASPIAN SEA</div>
+        </div>
+      </div>
+
       <div className="desktop-dashboard" style={{width: '100%'}}>
 
-        {/* ── LEFT COLUMN: Hero + Balance ── */}
+        {/* ── LEFT COLUMN: Balance + User Info ── */}
         <div className="desktop-left">
-          <div className="hero-section">
-            <div className="hero-overlay"></div>
-            <div className="hero-content">
-              <div className="hero-title">WORLD CLASS<br/>RESORT ON THE<br/>CASPIAN SEA</div>
-            </div>
-          </div>
 
           <div className="balance-card">
             <div className="balance-label">Wristband Balance</div>
