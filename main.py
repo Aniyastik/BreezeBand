@@ -466,7 +466,10 @@ def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(ge
         )
 
     is_child   = sub is not None
-    pay_wallet = master_wallet if is_child else wallet  # funds always live here
+    if is_child and wallet.balance >= payment.amount:
+        pay_wallet = wallet
+    else:
+        pay_wallet = master_wallet if is_child else wallet
 
     # ── Fetch vendor (needed for both paths) ─────────────────────────────────
     vendor = db.query(models.Vendor).filter(models.Vendor.id == payment.vendor_id).first()
