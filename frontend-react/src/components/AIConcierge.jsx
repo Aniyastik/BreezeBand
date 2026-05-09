@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+import { API_BASE } from '../api';
 
 function AIConcierge({ nfcUid }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,7 +27,7 @@ function AIConcierge({ nfcUid }) {
     setIsTyping(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
+      const response = await fetch(`${API_BASE}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
