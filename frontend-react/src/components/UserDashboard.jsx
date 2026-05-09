@@ -21,6 +21,10 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   const [pwError, setPwError]             = useState('')
   const [pwLoading, setPwLoading]         = useState(false)
 
+  // Debt state
+  const [debtPaying, setDebtPaying] = useState(false)
+  const [debtMsg, setDebtMsg]       = useState({ text: '', ok: true })
+
   // Auto-load profile from DB when uid is available (after refresh or re-login)
   useEffect(() => {
     if (propUid && !profile) {
@@ -243,8 +247,6 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
     )
   }
 
-  const [debtPaying, setDebtPaying] = useState(false)
-  const [debtMsg, setDebtMsg]       = useState({ text: '', ok: true })
 
   const handlePayDebt = async () => {
     setDebtPaying(true)
