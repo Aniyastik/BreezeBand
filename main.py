@@ -9,7 +9,7 @@ import asyncio
 import os
 import random
 import json
-from datetime import datetime, date as _date
+from datetime import datetime, date as _date, timezone
 from sqlalchemy.orm import Session
 
 import models
@@ -653,7 +653,7 @@ def receive_location_ping(data: schemas.LocationPing):
     loc_data = {
         "gateway_id": data.gateway_id,
         "rssi": data.rssi,
-        "last_seen": datetime.now().isoformat()
+        "last_seen": datetime.now(timezone.utc).isoformat()
     }
     r.hset("ble_locations", data.band_id.lower().strip(), json.dumps(loc_data))
     return {"status": "success"}
