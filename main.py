@@ -663,6 +663,106 @@ def get_hardware_simulator():
     """Serves the manual BLE hardware simulator directly."""
     return FileResponse("hardware_simulator/manual_controller.html")
 
+
+# ── AI Concierge ──────────────────────────────────────────────────────────────
+
+class MockLLM:
+    """Simulates an OpenAI LLM Call with Semantic Routing and Context Injection."""
+    @staticmethod
+    def generate_response(system_prompt: str, user_message: str, context: dict) -> str:
+        msg = user_message.lower()
+        age = context.get("age", 18)
+        balance = context.get("balance", 0)
+        location = context.get("location", "Unknown")
+
+        # Semantic Route: Drink/Thirsty
+        if "drink" in msg or "thirsty" in msg or "wine" in msg or "beer" in msg or "alcohol" in msg:
+            if age < 18:
+                return "Since you're under 18, I can't recommend the Wine Store. However, you can grab a refreshing juice or smoothie at the Park Cafe!"
+            else:
+                return "You're of age! I highly recommend the 'Wine store and bar' for a great selection of drinks. It's the perfect place to relax."
+        
+        # Semantic Route: Eat/Hungry
+        if "eat" in msg or "hungry" in msg or "food" in msg or "restaurant" in msg or "dinner" in msg or "lunch" in msg:
+            if balance < 20:
+                return f"I see your balance is {balance:.2f} AZN. Scalini or Shore House might be a bit pricey right now, but you can definitely grab a delicious quick bite at Shaurma No1!"
+            else:
+                return "You have plenty in your balance! I highly recommend dining at Shore House Restaurant and Lounge, BOSIOR, or enjoying some Italian at Scalini."
+                
+        # Semantic Route: Fun/Activity
+        if "fun" in msg or "activity" in msg or "bored" in msg or "play" in msg or "game" in msg:
+            return "Looking for fun? Check out Funzilla or Funz karting! They are super popular here at Sea Breeze and guarantee a great time."
+            
+        # Semantic Route: Location/Near me
+        if "where" in msg or "near" in msg or "around" in msg or "lost" in msg:
+            if location != "Unknown":
+                loc_name = location.replace("_gateway", "").replace("_", " ").title()
+                return f"I see from your wristband signal that you are currently near the {loc_name}. Feel free to check out the venues right around you, or hop on a buggy to explore the rest of the resort!"
+            return "I'm not quite sure where your wristband is right now (no signal detected), but the Pool area or Lobby are always great starting points!"
+
+        # Default fallback
+        return f"Hello! I am your BreezeBand AI Concierge. I see you are {age} years old and have {balance:.2f} AZN to spend. How can I help you enjoy your stay at Sea Breeze today?"
+
+
+@app.post("/api/ai/chat")
+def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
+    """
+    Context-Aware AI Concierge Endpoint.
+    Demonstrates Age-stratified Context Injection & Semantic Routing.
+    """
+    nfc_uid = req.nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+        
+    sub = db.query(models.SubAccount).filter(models.SubAccount.child_wallet_id == wallet.id).first()
+    
+    # 1. Context: Age
+    age = sub.age if sub else 25 # Default adult age if master/solo
+    
+    # 2. Context: Balance
+    is_child = sub is not None
+    if is_child:
+        master_wallet = db.query(models.Wallet).filter(models.Wallet.id == sub.family.master_wallet_id).first()
+        available_balance = min(master_wallet.balance, sub.daily_spending_limit - sub.current_daily_spend)
+    else:
+        available_balance = wallet.balance
+        
+    # 3. Context: Location
+    loc_str = r.hget("ble_locations", nfc_uid)
+    loc_data = json.loads(loc_str) if loc_str else None
+    location = loc_data.get("gateway_id", "Unknown") if loc_data else "Unknown"
+    
+    # 4. Context: Vendors Database
+    vendors = db.query(models.Vendor).all()
+    vendor_list = [{"name": v.name, "age_restricted": v.age_restricted} for v in vendors]
+    
+    context = {
+        "age": age,
+        "balance": available_balance,
+        "location": location,
+        "vendors": vendor_list
+    }
+    
+    # Construct System Prompt (Simulated Injection)
+    system_prompt = f"""
+    You are the BreezeBand AI Concierge for Sea Breeze Resort.
+    USER CONTEXT:
+    - Age: {age}
+    - Available Balance: {available_balance} AZN
+    - Current Location: {location}
+    
+    RULES:
+    1. Do not recommend age_restricted venues to users under 18.
+    2. Suggest cheaper options if balance is low.
+    """
+    
+    # Route to LLM
+    response_text = MockLLM.generate_response(system_prompt, req.message, context)
+    
+    return {"reply": response_text, "context_injected": context}
+
+
 @app.get("/family/info/{master_nfc_uid}")
 def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):
     """Return the full family account with all children and their spend status."""

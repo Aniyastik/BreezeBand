@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../api'
 import FamilyWallet from './FamilyWallet'
+import AIConcierge from './AIConcierge'
 
 // Module-level cache — survives route changes, clears on page refresh
 const _authenticatedUids = new Set()
@@ -573,6 +574,10 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
 
         </div>{/* end desktop-right */}
       </div>{/* end desktop-dashboard */}
+      
+      {/* ── AI Concierge Floating Widget ── */}
+      <AIConcierge nfcUid={profile.nfc_uid} />
     </div>
   )
 }
+export default UserDashboard;

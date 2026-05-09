@@ -92,3 +92,10 @@ class LocationPing(BaseModel):
     band_id: str
     rssi: int
 
+# ── AI Concierge ──────────────────────────────────────────────────────────────
+
+class ChatRequest(BaseModel):
+    nfc_uid: str
+    message: str
+
+
