@@ -377,6 +377,16 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
             <div className="stat-label">Logged in as</div>
             <div style={{fontWeight: 700, color: 'var(--text-secondary)', fontSize: 18}}>{profile.name}</div>
             <div className="stat-subtext" style={{marginTop: 4}}>NFC: {profile.nfc_uid}</div>
+            {profile.family_member_type === 'child' && (
+              <div style={{marginTop: 10, padding: '6px 10px', background: 'rgba(41,114,136,0.1)', borderRadius: 6, display: 'inline-block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)'}}>
+                👨‍👩‍👧 Member of Family Plan: {profile.family_name}
+              </div>
+            )}
+            {profile.family_member_type === 'master' && (
+              <div style={{marginTop: 10, padding: '6px 10px', background: 'rgba(41,114,136,0.1)', borderRadius: 6, display: 'inline-block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)'}}>
+                👑 Family Plan Manager: {profile.family_name}
+              </div>
+            )}
           </div>
 
           {/* Debt Status Card */}

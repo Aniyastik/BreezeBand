@@ -652,8 +652,15 @@ def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):
     children = []
     for sub in family.sub_accounts:
         cw = db.query(models.Wallet).filter(models.Wallet.id == sub.child_wallet_id).first()
+        
+        child_user_name = sub.child_name
+        if cw:
+            child_user = db.query(models.User).filter(models.User.id == cw.user_id).first()
+            if child_user:
+                child_user_name = child_user.name
+                
         children.append({
-            "child_name"          : sub.child_name,
+            "child_name"          : child_user_name,
             "age"                 : sub.age,
             "nfc_uid"             : cw.nfc_uid if cw else "?",
             "daily_spending_limit": sub.daily_spending_limit,
@@ -717,6 +724,20 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
     bank = db.query(models.BankAccount).filter(models.BankAccount.user_id == wallet.user_id).first()
     
+    family_member_type = None
+    family_name = None
+
+    family = db.query(models.FamilyAccount).filter(models.FamilyAccount.master_wallet_id == wallet.id).first()
+    if family:
+        family_member_type = "master"
+        family_name = family.family_name
+    else:
+        sub = db.query(models.SubAccount).filter(models.SubAccount.child_wallet_id == wallet.id).first()
+        if sub:
+            family_member_type = "child"
+            if sub.family:
+                family_name = sub.family.family_name
+
     return {
         "name": user.name,
         "nfc_uid": nfc_uid,
@@ -725,7 +746,9 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
         "bank_balance": bank.balance if bank else 0.0,
         "is_admin": user.is_admin,
         "has_password": bool(user.password_hash),
-        "debt": wallet.debt or 0.0
+        "debt": wallet.debt or 0.0,
+        "family_member_type": family_member_type,
+        "family_name": family_name
     }
 
 @app.patch("/profile/{nfc_uid}")
@@ -805,6 +828,20 @@ def unlock_profile(data: schemas.UnlockRequest, db: Session = Depends(get_db)):
         if not _verify_pw(data.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
 
+    family_member_type = None
+    family_name = None
+
+    family_acc = db.query(models.FamilyAccount).filter(models.FamilyAccount.master_wallet_id == wallet.id).first()
+    if family_acc:
+        family_member_type = "master"
+        family_name = family_acc.family_name
+    else:
+        sub = db.query(models.SubAccount).filter(models.SubAccount.child_wallet_id == wallet.id).first()
+        if sub:
+            family_member_type = "child"
+            if sub.family:
+                family_name = sub.family.family_name
+
     return {
         "name"            : user.name,
         "nfc_uid"         : nfc_uid,
@@ -814,6 +851,8 @@ def unlock_profile(data: schemas.UnlockRequest, db: Session = Depends(get_db)):
         "is_admin"        : user.is_admin,
         "has_password"    : bool(user.password_hash),
         "debt"            : wallet.debt or 0.0,
+        "family_member_type": family_member_type,
+        "family_name"     : family_name
     }
 
 
