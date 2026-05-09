@@ -91,16 +91,19 @@ h1, h2, h3, .serif-text {
 
 .header-logo .main {
   font-family: 'Playfair Display', serif;
-  font-size: 20px;
-  letter-spacing: 1px;
+  font-size: 28px;
+  letter-spacing: 2px;
   color: var(--text-secondary);
+  font-weight: 700;
 }
 
 .header-logo .sub {
-  font-size: 10px;
-  letter-spacing: 3px;
+  font-size: 9px;
+  letter-spacing: 5px;
   text-transform: uppercase;
   color: var(--text-secondary);
+  opacity: 0.7;
+  margin-top: -2px;
 }
 
 .header-icons {
@@ -355,6 +358,64 @@ button:disabled {
   border: 1px solid rgba(255,255,255,0.8);
 }
 
+/* Premium balance card */
+.balance-card {
+  background: linear-gradient(145deg, #297288 0%, #1a4f61 60%, #0f3340 100%);
+  border-radius: 20px;
+  padding: 28px 24px 24px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(41,114,136,0.35);
+}
+.balance-card::before {
+  content: '';
+  position: absolute;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  top: -80px; right: -60px;
+}
+.balance-card::after {
+  content: '';
+  position: absolute;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  bottom: -40px; left: -30px;
+}
+.balance-card .balance-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-bottom: 10px;
+  position: relative; z-index: 1;
+}
+.balance-card .balance-amount {
+  font-family: 'Playfair Display', serif;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  position: relative; z-index: 1;
+  letter-spacing: -1px;
+}
+.balance-card .balance-currency {
+  font-size: 16px;
+  opacity: 0.75;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  margin-left: 4px;
+  vertical-align: super;
+  font-size: 14px;
+}
+.balance-card .balance-sub {
+  font-size: 12px;
+  opacity: 0.55;
+  margin-top: 8px;
+  position: relative; z-index: 1;
+}
+
 .stat-card.highlight {
   background: linear-gradient(135deg, var(--text-secondary), #1e5566);
   color: white;
@@ -560,13 +621,41 @@ button:disabled {
   }
 }
 
-/* Mobile: single column (no changes needed, existing styles apply) */
+/* ── Mobile layout: clean single column ──────────────────────────────────── */
 @media (max-width: 899px) {
   .desktop-dashboard {
-    display: contents; /* children render as if unwrapped */
+    display: flex;
+    flex-direction: column;
+    padding: 0 0 60px;
+    gap: 0;
   }
-  .desktop-left,
+
+  .desktop-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 16px;
+    margin-top: -32px;
+    position: relative;
+    z-index: 2;
+  }
+
   .desktop-right {
-    display: contents;
+    display: flex;
+    flex-direction: column;
+    padding: 0 16px;
+    margin-top: 20px;
+  }
+
+  .hero-section {
+    height: 200px;
+    border-radius: 0;
+    margin-bottom: 0;
+  }
+
+  /* Sticky left col not needed on mobile */
+  .desktop-left {
+    position: relative;
+    top: auto;
   }
 }

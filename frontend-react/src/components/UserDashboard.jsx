@@ -165,10 +165,13 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
             </div>
           </div>
 
-          <div className="stat-card highlight">
-            <div className="stat-label" style={{color: 'rgba(255,255,255,0.8)'}}>Wristband Balance</div>
-            <div className="stat-value" style={{fontSize: '36px'}}>{profile.wallet_balance.toFixed(2)}</div>
-            <div className="stat-subtext" style={{color: 'rgba(255,255,255,0.8)'}}>AZN (Spendable)</div>
+          <div className="balance-card">
+            <div className="balance-label">Wristband Balance</div>
+            <div className="balance-amount">
+              {profile.wallet_balance.toFixed(2)}
+              <span className="balance-currency">AZN</span>
+            </div>
+            <div className="balance-sub">Available to spend today</div>
           </div>
 
           <div className="stat-card" style={{background: 'rgba(255,255,255,0.7)'}}>
