@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../api'
 import FamilyWallet from './FamilyWallet'
 
+// Module-level cache — survives route changes, clears on page refresh
+const _authenticatedUids = new Set()
+
 export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
@@ -15,8 +18,8 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   const [loadLoading, setLoadLoading] = useState(false)
 
   // Password gate state
-  const [pendingUid, setPendingUid]       = useState(null)   // uid waiting for password
-  const [pendingName, setPendingName]     = useState('')     // user's name (for greeting)
+  const [pendingUid, setPendingUid]       = useState(null)
+  const [pendingName, setPendingName]     = useState('')
   const [pwInput, setPwInput]             = useState('')
   const [pwError, setPwError]             = useState('')
   const [pwLoading, setPwLoading]         = useState(false)
@@ -28,10 +31,38 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   // Auto-load profile from DB when uid is available (after refresh or re-login)
   useEffect(() => {
     if (propUid && !profile) {
-      beginLogin(propUid)
+      // If already authenticated this session, skip password
+      if (_authenticatedUids.has(propUid.toLowerCase().trim())) {
+        loadProfileDirect(propUid.toLowerCase().trim())
+      } else {
+        beginLogin(propUid)
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propUid])
+
+  // ── Direct profile load (no password needed — already authenticated) ──────
+  const loadProfileDirect = async (uid) => {
+    try {
+      const [profRes, histRes] = await Promise.all([
+        fetch(`${API_BASE}/profile/${uid}`),
+        fetch(`${API_BASE}/history/${uid}`)
+      ])
+      const profData = await profRes.json()
+      const histData = await histRes.json()
+      if (!profRes.ok) throw new Error(profData.detail || 'Profile load failed')
+
+      setProfile(profData)
+      setHistory(histData)
+      setUid(uid)
+      setIsAdmin(profData.is_admin)
+      setStatus({ msg: '', type: '' })
+    } catch (err) {
+      // Fallback: re-authenticate
+      _authenticatedUids.delete(uid)
+      beginLogin(uid)
+    }
+  }
 
   // ── Step 1: check if password needed ──────────────────────────────────────
   const beginLogin = async (uid) => {
@@ -76,6 +107,9 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
       setHistory(histData)
       setPendingUid(null)
       setStatus({ msg: '', type: '' })
+
+      // Mark as authenticated for this session
+      _authenticatedUids.add(uid)
 
       localStorage.setItem('userUid', uid)
       localStorage.setItem('isAdmin', data.is_admin ? 'true' : 'false')
@@ -280,8 +314,8 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
       {/* ── DEBT BANNER ── */}
       {hasDebt && (
         <div style={{
-          width: '100%', maxWidth: 1100, margin: '0 auto',
-          padding: '0 40px',
+          width: '100%', maxWidth: 1400, margin: '0 auto',
+          padding: '0 48px',
         }}>
           <div style={{
             background: 'linear-gradient(135deg, #d93025 0%, #a51d13 100%)',
