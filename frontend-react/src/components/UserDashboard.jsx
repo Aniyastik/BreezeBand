@@ -153,78 +153,89 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
 
   return (
     <div className="w-full" style={{paddingBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      <div className="hero-section" style={{width: '100%'}}>
-        <div className="hero-overlay"></div>
-        <div className="hero-content">
-          <div className="hero-title">WORLD CLASS<br/>RESORT ON THE<br/>CASPIAN SEA</div>
-        </div>
-      </div>
-      
-      <div style={{width: '100%', maxWidth: '440px', marginTop: '-40px', padding: '0 16px'}}>
-        <div className="mb-xl">
-            <div className="stat-card highlight">
-                <div className="stat-label" style={{color: 'rgba(255,255,255,0.8)'}}>Wristband Balance</div>
-                <div className="stat-value" style={{fontSize: '36px'}}>{profile.wallet_balance.toFixed(2)}</div>
-                <div className="stat-subtext" style={{color: 'rgba(255,255,255,0.8)'}}>AZN (Spendable)</div>
+
+      <div className="desktop-dashboard" style={{width: '100%'}}>
+
+        {/* ── LEFT COLUMN: Hero + Balance ── */}
+        <div className="desktop-left">
+          <div className="hero-section">
+            <div className="hero-overlay"></div>
+            <div className="hero-content">
+              <div className="hero-title">WORLD CLASS<br/>RESORT ON THE<br/>CASPIAN SEA</div>
             </div>
+          </div>
+
+          <div className="stat-card highlight">
+            <div className="stat-label" style={{color: 'rgba(255,255,255,0.8)'}}>Wristband Balance</div>
+            <div className="stat-value" style={{fontSize: '36px'}}>{profile.wallet_balance.toFixed(2)}</div>
+            <div className="stat-subtext" style={{color: 'rgba(255,255,255,0.8)'}}>AZN (Spendable)</div>
+          </div>
+
+          <div className="stat-card" style={{background: 'rgba(255,255,255,0.7)'}}>
+            <div className="stat-label">Logged in as</div>
+            <div style={{fontWeight: 700, color: 'var(--text-secondary)', fontSize: 18}}>{profile.name}</div>
+            <div className="stat-subtext" style={{marginTop: 4}}>NFC: {profile.nfc_uid}</div>
+          </div>
         </div>
 
-        <div>
-            {/* ── Load Daily Balance Card ── */}
-            <div className="stat-card" style={{marginBottom: 24, background: 'rgba(255,255,255,0.85)', border: '2px solid var(--accent)'}}>
-              <div className="stat-label" style={{color: 'var(--accent)', fontWeight: 700, marginBottom: 4}}>💳 Load Daily Balance</div>
-              <div className="text-xs text-muted" style={{marginBottom: 12}}>
-                Your bank card has <strong>{profile.bank_balance?.toFixed(2) ?? '—'} AZN</strong>.
-                Load a daily budget — your card won't be charged until end of day.
-                Only what you <em>actually spend</em> gets deducted.
-              </div>
-              <div className="flex-row gap-sm" style={{alignItems: 'center'}}>
-                <input
-                  type="number"
-                  min="1"
-                  className="modern-input text-sm py-sm px-sm"
-                  style={{flex: 1}}
-                  placeholder="Amount (AZN)"
-                  value={loadAmount}
-                  onChange={e => setLoadAmount(e.target.value)}
-                />
-                <button
-                  className="btn-primary text-sm py-sm px-md"
-                  style={{minHeight: '44px', whiteSpace: 'nowrap'}}
-                  onClick={handleLoadDaily}
-                  disabled={loadLoading}
-                >
-                  {loadLoading ? 'Loading...' : 'Load'}
-                </button>
-              </div>
-              {loadStatus.msg && <div className={`status-msg ${loadStatus.type} mt-sm`}>{loadStatus.msg}</div>}
-            </div>
+        {/* ── RIGHT COLUMN: Cards ── */}
+        <div className="desktop-right" style={{paddingTop: 0}}>
 
-            <h3 className="section-title" style={{marginTop: 0}}>Today's Transactions</h3>
-            
-            {history.length === 0 ? (
-                <div className="empty-state">No transactions yet.</div>
-            ) : (
-                <div className="history-list">
-                    {history.map(tx => (
-                        <div key={tx.id} className={`history-item ${tx.status === 'completed' ? 'border-success' : 'border-warning'}`}>
-                            <div className="history-details">
-                                <span className="font-bold" style={{color: 'var(--text-primary)'}}>{tx.vendor_name}</span>
-                                <span className="text-xs text-muted mt-xs">{new Date(tx.timestamp).toLocaleString('en-US', {hour: 'numeric', minute: '2-digit'})} • {tx.status === 'completed' ? 'Settled' : 'Pending'}</span>
-                            </div>
-                            <span className={`history-amount ${tx.status === 'completed' ? 'text-success' : 'text-warning'}`}>{tx.amount} AZN</span>
-                        </div>
-                    ))}
+          {/* ── Load Daily Balance Card ── */}
+          <div className="stat-card" style={{marginBottom: 24, background: 'rgba(255,255,255,0.85)', border: '2px solid var(--accent)'}}>
+            <div className="stat-label" style={{color: 'var(--text-secondary)', fontWeight: 700, marginBottom: 4}}>💳 Load Daily Balance</div>
+            <div className="text-xs text-muted" style={{marginBottom: 12}}>
+              Your bank card has <strong>{profile.bank_balance?.toFixed(2) ?? '—'} AZN</strong>.
+              Load a daily budget — your card won't be charged until end of day.
+              Only what you <em>actually spend</em> gets deducted.
+            </div>
+            <div className="flex-row gap-sm" style={{alignItems: 'center'}}>
+              <input
+                type="number"
+                min="1"
+                className="modern-input text-sm py-sm px-sm"
+                style={{flex: 1}}
+                placeholder="Amount (AZN)"
+                value={loadAmount}
+                onChange={e => setLoadAmount(e.target.value)}
+              />
+              <button
+                className="btn-primary text-sm py-sm px-md"
+                style={{minHeight: '44px', whiteSpace: 'nowrap'}}
+                onClick={handleLoadDaily}
+                disabled={loadLoading}
+              >
+                {loadLoading ? 'Loading...' : 'Load'}
+              </button>
+            </div>
+            {loadStatus.msg && <div className={`status-msg ${loadStatus.type} mt-sm`}>{loadStatus.msg}</div>}
+          </div>
+
+          <h3 className="section-title" style={{marginTop: 0}}>Today's Transactions</h3>
+
+          {history.length === 0 ? (
+            <div className="empty-state">No transactions yet.</div>
+          ) : (
+            <div className="history-list">
+              {history.map(tx => (
+                <div key={tx.id} className={`history-item ${tx.status === 'completed' ? 'border-success' : 'border-warning'}`}>
+                  <div className="history-details">
+                    <span className="font-bold" style={{color: 'var(--text-primary)'}}>{tx.vendor_name}</span>
+                    <span className="text-xs text-muted mt-xs">{new Date(tx.timestamp).toLocaleString('en-US', {hour: 'numeric', minute: '2-digit'})} • {tx.status === 'completed' ? 'Settled' : 'Pending'}</span>
+                  </div>
+                  <span className={`history-amount ${tx.status === 'completed' ? 'text-success' : 'text-warning'}`}>{tx.amount} AZN</span>
                 </div>
-            )}
-        </div>
+              ))}
+            </div>
+          )}
 
-        {/* ── Family Wallet Panel ── */}
-        <div style={{marginTop: 32}}>
-          <FamilyWallet nfcUid={profile.nfc_uid} />
-        </div>
+          {/* ── Family Wallet Panel ── */}
+          <div style={{marginTop: 32}}>
+            <FamilyWallet nfcUid={profile.nfc_uid} />
+          </div>
 
-      </div>
+        </div>{/* end desktop-right */}
+      </div>{/* end desktop-dashboard */}
     </div>
   )
 }

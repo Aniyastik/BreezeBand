@@ -435,29 +435,101 @@
 </div>
 
 <!-- Login Overlay -->
-<div class="overlay open" id="loginOverlay" style="background: rgba(216, 236, 248, 0.98);">
-  <div class="result-card" style="max-width: 380px;">
-    <div class="logo-main" style="font-size: 24px; text-align: center; margin-bottom: 24px;">SEA BREEZE<br><span class="logo-sub" style="font-size: 12px; margin-top: 8px; display: block;">POS LOGIN</span></div>
-    
-    <div style="text-align: left; margin-bottom: 16px;">
-      <label>Select Vendor / Stall</label>
-      <div class="select-wrap">
-        <select id="loginVendorSelect">
-          <option value="">Loading vendors…</option>
-        </select>
+<div class="overlay open" id="loginOverlay" style="background: rgba(216, 236, 248, 0.98); backdrop-filter: blur(20px);">
+  <div style="
+    display: flex;
+    width: 100%;
+    max-width: 780px;
+    min-height: 480px;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(41,114,136,0.18);
+    margin: 16px;
+  ">
+    <!-- Left decorative panel -->
+    <div style="
+      flex: 1;
+      background: linear-gradient(160deg, #297288 0%, #1e5566 100%);
+      padding: 48px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      min-width: 240px;
+    ">
+      <!-- Background circles decoration -->
+      <div style="position:absolute;width:220px;height:220px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);top:-60px;right:-60px;"></div>
+      <div style="position:absolute;width:160px;height:160px;border-radius:50%;border:1px solid rgba(255,255,255,0.08);bottom:40px;left:-40px;"></div>
+
+      <div style="position:relative;z-index:2;">
+        <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;letter-spacing:1px;margin-bottom:6px;">SEA BREEZE</div>
+        <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;opacity:0.7;">Resort · POS Terminal</div>
+      </div>
+
+      <div style="position:relative;z-index:2;">
+        <div style="font-size:13px;opacity:0.7;line-height:1.7;">
+          Secure point-of-sale<br/>system for wristband<br/>NFC payments.
+        </div>
+        <div style="margin-top:24px;display:flex;align-items:center;gap:8px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,0.6);"></div>
+          <span style="font-size:12px;opacity:0.85;">System Online</span>
+        </div>
       </div>
     </div>
-    
-    <div style="text-align: left; margin-bottom: 24px;">
-      <label>Password</label>
-      <input type="password" id="loginPassword" placeholder="Enter password" />
+
+    <!-- Right form panel -->
+    <div style="
+      flex: 1.2;
+      background: rgba(255,255,255,0.97);
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+    ">
+      <div>
+        <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#1a1a1a;margin-bottom:4px;">Welcome back</div>
+        <div style="font-size:13px;color:#666;">Sign in to start processing payments</div>
+      </div>
+
+      <div>
+        <label>Vendor / Stall</label>
+        <div class="select-wrap">
+          <select id="loginVendorSelect">
+            <option value="">Loading vendors…</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter password" />
+      </div>
+
+      <button id="loginBtn" style="
+        width: 100%; padding: 16px;
+        border-radius: 12px; border: none;
+        background: linear-gradient(135deg, #297288, #1e5566);
+        color: #fff;
+        font-family: 'Inter', sans-serif;
+        font-size: 15px; font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 8px 24px rgba(41,114,136,0.25);
+        letter-spacing: 0.3px;
+      ">
+        Sign in to POS →
+      </button>
+
+      <div style="text-align:center;font-size:11px;color:#aaa;margin-top:-8px;">
+        Sea Breeze Resort · Secure Terminal v2
+      </div>
     </div>
-    
-    <button id="loginBtn" style="width: 100%; padding: 16px; border-radius: 12px; border: none; background: var(--teal); color: #fff; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-      Login to POS
-    </button>
   </div>
 </div>
+
 
 <script>
   const API = window.location.origin;
