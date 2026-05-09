@@ -675,45 +675,77 @@ class MockLLM:
         balance = context.get("balance", 0)
         location = context.get("location", "Unknown")
 
-        # Semantic Route: Drink/Thirsty
-        if "drink" in msg or "thirsty" in msg or "wine" in msg or "beer" in msg or "alcohol" in msg:
+        # Semantic Route: Greetings
+        if msg in ["hi", "hello", "hey", "good morning", "good evening", "good afternoon", "start"]:
+            return f"Hello! I am your BreezeBand AI Concierge. I see you have {balance:.2f} AZN to spend. How can I help you enjoy your stay at Sea Breeze today?"
+
+        # Semantic Route: Drink/Thirsty/Alcohol
+        if "drink" in msg or "thirsty" in msg or "wine" in msg or "beer" in msg or "alcohol" in msg or "cocktail" in msg:
             if age < 18:
-                return "Since you're under 18, I can't recommend the Wine Store. However, you can grab a refreshing juice or smoothie at the Park Cafe!"
+                return "Since you're under 18, I can't recommend the Wine Store. However, you can grab a refreshing juice or smoothie at the Park Cafe or The Chayxana!"
             else:
                 return "You're of age! I highly recommend the 'Wine store and bar' for a great selection of drinks. It's the perfect place to relax."
         
         # Semantic Route: Sweet/Dessert
-        if "sweet" in msg or "swwet" in msg or "dessert" in msg or "cake" in msg or "ice cream" in msg:
+        if "sweet" in msg or "swwet" in msg or "dessert" in msg or "cake" in msg or "ice cream" in msg or "sugar" in msg:
             return "Craving something sweet? You can definitely find great desserts and sweets at Park Cafe or Polo Cafe! If you want a quick sweet snack, Shaurma No1 might also have some options."
 
+        # Semantic Route: Coffee/Tea
+        if "coffee" in msg or "tea" in msg or "latte" in msg or "espresso" in msg or "cafe" in msg or "caffeine" in msg:
+            return "Need a caffeine boost? Park Cafe and Polo Cafe serve excellent coffee. For traditional tea, definitely visit The Chayxana!"
+
         # Semantic Route: Specific Venues
-        if "scalini" in msg or "shore house" in msg or "shaurma" in msg:
+        if "scalini" in msg or "shore house" in msg or "shaurma" in msg or "bosior" in msg:
             if "shaurma" in msg:
                 return "Shaurma No1 is a fantastic, budget-friendly option for a quick and tasty bite!"
             if balance < 20:
                 return f"That's a great choice, but keeping your balance ({balance:.2f} AZN) in mind, it might be a bit pricey. Shaurma No1 or Park Cafe could be safer bets for your budget!"
-            return "Excellent choice! Both Scalini and Shore House offer a fantastic dining experience."
+            return "Excellent choice! That venue offers a fantastic and premium dining experience."
 
         # Semantic Route: Eat/Hungry
-        if "eat" in msg or "hungry" in msg or "food" in msg or "restaurant" in msg or "dinner" in msg or "lunch" in msg:
+        if "eat" in msg or "hungry" in msg or "food" in msg or "restaurant" in msg or "dinner" in msg or "lunch" in msg or "breakfast" in msg or "snack" in msg:
             if balance < 20:
-                return f"I see your balance is {balance:.2f} AZN. Scalini or Shore House might be a bit pricey right now, but you can definitely grab a delicious quick bite at Shaurma No1!"
+                return f"I see your balance is {balance:.2f} AZN. Scalini or Shore House might be a bit pricey right now, but you can definitely grab a delicious quick bite at Shaurma No1 or Fish Box!"
             else:
-                return "You have plenty in your balance! I highly recommend dining at Shore House Restaurant and Lounge, BOSIOR, or enjoying some Italian at Scalini."
+                return "You have plenty in your balance! I highly recommend dining at Shore House Restaurant and Lounge, BOSIOR, or enjoying some premium Italian at Scalini."
                 
+        # Semantic Route: Relax/Spa/Massage
+        if "relax" in msg or "spa" in msg or "massage" in msg or "zen" in msg or "yoga" in msg or "wellness" in msg:
+            return "Looking to unwind? I highly recommend booking a session at the Anti-aging Center for some pampering, or visiting Nine Senses for yoga and relaxation."
+
+        # Semantic Route: Gym/Workout/Sport
+        if "gym" in msg or "workout" in msg or "sport" in msg or "exercise" in msg or "fitness" in msg or "train" in msg:
+            return "Want to break a sweat? Crocus Fitness is our state-of-the-art gym facility. Don't forget your BreezeBand to access the lockers!"
+
+        # Semantic Route: Beach/Swim/Pool
+        if "beach" in msg or "swim" in msg or "pool" in msg or "sun" in msg or "water" in msg or "sea" in msg:
+            return "It's a beautiful day for the water! You can relax at the Hovuz Bari (Pool Bar) or head down to the Sport Beach Club to enjoy the sea breeze."
+
+        # Semantic Route: Kids/Family
+        if "kid" in msg or "child" in msg or "family" in msg or "circus" in msg or "children" in msg:
+            return "Sea Breeze is great for families! The kids will absolutely love the Italian Circus or spending hours at Funzilla."
+
         # Semantic Route: Fun/Activity
-        if "fun" in msg or "activity" in msg or "bored" in msg or "play" in msg or "game" in msg:
-            return "Looking for fun? Check out Funzilla or Funz karting! They are super popular here at Sea Breeze and guarantee a great time."
+        if "fun" in msg or "activity" in msg or "bored" in msg or "play" in msg or "game" in msg or "karting" in msg:
+            return "Looking for fun? Check out Funzilla or race your friends at Funz karting! They are super popular and guarantee a great time."
             
         # Semantic Route: Location/Near me
-        if "where" in msg or "near" in msg or "around" in msg or "lost" in msg:
+        if "where" in msg or "near" in msg or "around" in msg or "lost" in msg or "location" in msg:
             if location != "Unknown":
                 loc_name = location.replace("_gateway", "").replace("_", " ").title()
                 return f"I see from your wristband signal that you are currently near the {loc_name}. Feel free to check out the venues right around you, or hop on a buggy to explore the rest of the resort!"
             return "I'm not quite sure where your wristband is right now (no signal detected), but the Pool area or Lobby are always great starting points!"
 
+        # Semantic Route: Balance/Money
+        if "balance" in msg or "money" in msg or "cost" in msg or "price" in msg or "pay" in msg or "azn" in msg:
+            return f"Your current available balance is {balance:.2f} AZN. Remember, you can tap your BreezeBand at any POS terminal to pay effortlessly!"
+
+        # Semantic Route: Emergency/Help
+        if "help" in msg or "emergency" in msg or "doctor" in msg or "police" in msg or "guard" in msg:
+            return "If you have an emergency, please go immediately to the Lobby or approach any Sea Breeze Security Staff. We are here to help 24/7."
+
         # Default fallback
-        return f"Hello! I am your BreezeBand AI Concierge. I see you are {age} years old and have {balance:.2f} AZN to spend. How can I help you enjoy your stay at Sea Breeze today?"
+        return f"I'm sorry, I'm just an AI Concierge and I didn't quite catch that. I see you have {balance:.2f} AZN. Can I recommend a restaurant, activity, or help you find your way around?"
 
 
 @app.post("/api/ai/chat")
