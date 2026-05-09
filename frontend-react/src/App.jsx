@@ -252,14 +252,8 @@ function App() {
   const [notifModalOpen, setNotifModalOpen] = useState(false)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    const storedUid = localStorage.getItem('userUid')
-    const storedIsAdmin = localStorage.getItem('isAdmin') === 'true'
-    if (storedUid) {
-      setUid(storedUid)
-      setIsAdmin(storedIsAdmin)
-    }
-  }, [])
+  // No auto-login from localStorage — always show fresh splash page
+  // UID is set only after successful scan/login within this session
 
   const handleLogout = () => {
     localStorage.removeItem('userUid')

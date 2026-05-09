@@ -264,7 +264,7 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
     }
   }
 
-  const hasDebt = profile.debt && profile.debt > 0
+  const hasDebt = (profile.debt ?? 0) > 0
 
   return (
     <div className="w-full" style={{paddingBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
