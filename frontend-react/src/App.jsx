@@ -14,6 +14,14 @@ function ProfileModal({ uid, onClose, onProfileUpdated }) {
   const [saving, setSaving]     = useState(false);
   const [saveMsg, setSaveMsg]   = useState({ text: '', ok: true });
 
+  // Password change state
+  const [pwMode, setPwMode]     = useState(false);
+  const [curPw, setCurPw]       = useState('');
+  const [newPw, setNewPw]       = useState('');
+  const [confPw, setConfPw]     = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg]       = useState({ text: '', ok: true });
+
   useEffect(() => {
     fetch(`${API_BASE}/profile/${uid}`)
       .then(res => res.json())
@@ -48,6 +56,36 @@ function ProfileModal({ uid, onClose, onProfileUpdated }) {
     }
   };
 
+  const handlePwSave = async () => {
+    if (!newPw.trim()) { setPwMsg({ text: 'New password cannot be empty.', ok: false }); return; }
+    if (newPw !== confPw) { setPwMsg({ text: 'Passwords do not match.', ok: false }); return; }
+    if (profile.has_password && !curPw.trim()) { setPwMsg({ text: 'Enter your current password.', ok: false }); return; }
+
+    setPwSaving(true);
+    setPwMsg({ text: '', ok: true });
+    try {
+      const res = await fetch(`${API_BASE}/set_password/${uid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nfc_uid: uid,
+          new_password: newPw.trim(),
+          current_password: curPw.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed to set password');
+      setPwMsg({ text: '✅ ' + data.message, ok: true });
+      setProfile(prev => ({ ...prev, has_password: true }));
+      setCurPw(''); setNewPw(''); setConfPw('');
+      setTimeout(() => setPwMode(false), 1500);
+    } catch (err) {
+      setPwMsg({ text: `❌ ${err.message}`, ok: false });
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
   const teal = 'var(--text-secondary)';
   const fieldStyle = { display: 'flex', flexDirection: 'column', gap: 4 };
   const labelStyle = { fontSize: 11, fontWeight: 700, color: teal, textTransform: 'uppercase', letterSpacing: 1 };
@@ -61,7 +99,7 @@ function ProfileModal({ uid, onClose, onProfileUpdated }) {
 
   return (
     <div onClick={onClose} style={{position:'fixed',inset:0,backgroundColor:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div onClick={e => e.stopPropagation()} style={{background:'white',padding:0,borderRadius:20,width:'90%',maxWidth:380,overflow:'hidden',boxShadow:'0 24px 60px rgba(0,0,0,0.15)'}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'white',padding:0,borderRadius:20,width:'90%',maxWidth:380,overflow:'hidden',boxShadow:'0 24px 60px rgba(0,0,0,0.15)',maxHeight:'90vh',overflowY:'auto'}}>
 
         {/* Header */}
         <div style={{background:'linear-gradient(135deg,#297288,#1a4f61)',padding:'20px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -69,7 +107,7 @@ function ProfileModal({ uid, onClose, onProfileUpdated }) {
             <div style={{color:'white',fontFamily:'Playfair Display,serif',fontSize:18,fontWeight:700}}>My Profile</div>
             <div style={{color:'rgba(255,255,255,0.6)',fontSize:11,marginTop:2}}>NFC: {uid?.toUpperCase()}</div>
           </div>
-          {!editMode && <button onClick={() => { setEditMode(true); setSaveMsg({ text:'',ok:true }); }} style={{background:'rgba(255,255,255,0.15)',border:'none',color:'white',borderRadius:8,padding:'6px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Edit</button>}
+          {!editMode && !pwMode && <button onClick={() => { setEditMode(true); setSaveMsg({ text:'',ok:true }); }} style={{background:'rgba(255,255,255,0.15)',border:'none',color:'white',borderRadius:8,padding:'6px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Edit</button>}
         </div>
 
         {/* Body */}
@@ -99,10 +137,69 @@ function ProfileModal({ uid, onClose, onProfileUpdated }) {
                 </div>
               )}
 
-              {/* Save message */}
+              {/* Save message (for profile edit) */}
               {saveMsg.text && (
                 <div style={{fontSize:13,fontWeight:600,color:saveMsg.ok?'#188038':'#d93025',background:saveMsg.ok?'rgba(24,128,56,0.08)':'rgba(217,48,37,0.08)',borderRadius:8,padding:'8px 12px'}}>
                   {saveMsg.text}
+                </div>
+              )}
+
+              {/* ── Password Section ── */}
+              {!editMode && (
+                <div style={{borderTop:'1px solid rgba(41,114,136,0.1)',paddingTop:16}}>
+                  {!pwMode ? (
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                      <div>
+                        <div style={labelStyle}>Wristband Password</div>
+                        <div style={{fontSize:13,color:'#666',marginTop:4}}>
+                          {profile.has_password ? '🔒 Password is set' : '🔓 No password — anyone can use this band'}
+                        </div>
+                      </div>
+                      <button onClick={() => { setPwMode(true); setPwMsg({text:'',ok:true}); setCurPw(''); setNewPw(''); setConfPw(''); }}
+                        style={{background:'rgba(41,114,136,0.08)',border:'none',borderRadius:8,padding:'8px 14px',fontSize:12,fontWeight:600,color:teal,cursor:'pointer',whiteSpace:'nowrap'}}>
+                        {profile.has_password ? 'Change' : 'Set Password'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                      <div style={{...labelStyle, fontSize:12}}>🔑 {profile.has_password ? 'Change Password' : 'Set a Password'}</div>
+
+                      {profile.has_password && (
+                        <div style={fieldStyle}>
+                          <div style={{...labelStyle, fontSize:10}}>Current Password</div>
+                          <input type="password" style={inputStyle} value={curPw} onChange={e => setCurPw(e.target.value)} placeholder="Enter current password" />
+                        </div>
+                      )}
+
+                      <div style={fieldStyle}>
+                        <div style={{...labelStyle, fontSize:10}}>New Password</div>
+                        <input type="password" style={inputStyle} value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Enter new password" />
+                      </div>
+
+                      <div style={fieldStyle}>
+                        <div style={{...labelStyle, fontSize:10}}>Confirm New Password</div>
+                        <input type="password" style={inputStyle} value={confPw} onChange={e => setConfPw(e.target.value)} placeholder="Re-enter new password"
+                          onKeyDown={e => e.key === 'Enter' && handlePwSave()} />
+                      </div>
+
+                      {pwMsg.text && (
+                        <div style={{fontSize:12,fontWeight:600,color:pwMsg.ok?'#188038':'#d93025',background:pwMsg.ok?'rgba(24,128,56,0.08)':'rgba(217,48,37,0.08)',borderRadius:8,padding:'8px 12px'}}>
+                          {pwMsg.text}
+                        </div>
+                      )}
+
+                      <div style={{display:'flex',gap:8}}>
+                        <button onClick={() => setPwMode(false)}
+                          style={{flex:1,padding:'10px',border:'1px solid rgba(41,114,136,0.3)',borderRadius:8,background:'white',color:'#666',fontSize:13,cursor:'pointer',fontFamily:'Inter,sans-serif'}}>
+                          Cancel
+                        </button>
+                        <button onClick={handlePwSave} disabled={pwSaving}
+                          style={{flex:2,padding:'10px',border:'none',borderRadius:8,background:'linear-gradient(135deg,#297288,#1a4f61)',color:'white',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'Inter,sans-serif',opacity:pwSaving?0.7:1}}>
+                          {pwSaving ? 'Saving…' : 'Save Password'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </>

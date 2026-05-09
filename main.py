@@ -699,7 +699,8 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
         "wallet_balance": wallet.balance,
         "bank_account": bank.account_number if bank else "Yoxdur",
         "bank_balance": bank.balance if bank else 0.0,
-        "is_admin": user.is_admin
+        "is_admin": user.is_admin,
+        "has_password": bool(user.password_hash)
     }
 
 @app.patch("/profile/{nfc_uid}")

@@ -91,6 +91,20 @@
       color: var(--success);
       border: 1px solid rgba(24,128,56,0.2);
     }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .signout-btn {
+      display: none;
+      align-items: center; gap: 5px;
+      font-size: 12px; font-weight: 600;
+      padding: 6px 14px; border-radius: 20px;
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid rgba(217,48,37,0.2);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .signout-btn:hover { background: rgba(217,48,37,0.15); }
+    .signout-btn.visible { display: flex; }
     .status-dot {
       width: 7px; height: 7px; border-radius: 50%;
       background: var(--success);
@@ -401,9 +415,14 @@
     <div class="logo-main">SEA BREEZE</div>
     <div class="logo-sub">POS Terminal</div>
   </div>
-  <div class="status-badge">
-    <div class="status-dot"></div>
-    Online
+  <div class="header-right">
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      Online
+    </div>
+    <button class="signout-btn" id="signoutBtn" onclick="signOut()">
+      ↩ Sign out
+    </button>
   </div>
 </header>
 
@@ -631,6 +650,7 @@
     document.getElementById('vendorSelect').disabled = true; // Lock the main select
     document.getElementById('loginOverlay').classList.remove('open');
     document.getElementById('mainContent').style.display = 'flex';
+    document.getElementById('signoutBtn').classList.add('visible');
   });
 
   document.getElementById('chipGrid').addEventListener('click', e => {
@@ -787,6 +807,28 @@
   }
 
   loadVendors();
+
+  // --- SIGN OUT ---
+  function signOut() {
+    // Hide main content, show login overlay
+    document.getElementById('mainContent').style.display = 'none';
+    document.getElementById('loginOverlay').classList.add('open');
+    document.getElementById('signoutBtn').classList.remove('visible');
+
+    // Reset state
+    document.getElementById('vendorSelect').disabled = false;
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('amountInput').value = '';
+    document.querySelectorAll('.amount-chip').forEach(c => c.classList.remove('active'));
+    currentUid = null;
+    document.getElementById('uidBadge').textContent = '';
+    document.getElementById('nfcLabel').textContent = 'Tap Wristband Here';
+    document.getElementById('nfcSub').textContent = 'Hold NFC wristband close to the back of your phone';
+    document.getElementById('nfcZone').className = 'nfc-zone';
+
+    // Clear transaction list
+    document.getElementById('txList').innerHTML = '<div class="empty-tx">Tap a wristband to start</div>';
+  }
 </script>
 </body>
 </html>
