@@ -344,6 +344,24 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
             <div style={{fontWeight: 700, color: 'var(--text-secondary)', fontSize: 18}}>{profile.name}</div>
             <div className="stat-subtext" style={{marginTop: 4}}>NFC: {profile.nfc_uid}</div>
           </div>
+
+          {/* Debt Status Card */}
+          <div className="stat-card" style={{
+            background: hasDebt ? 'rgba(217,48,37,0.06)' : 'rgba(24,128,56,0.06)',
+            border: `1px solid ${hasDebt ? 'rgba(217,48,37,0.2)' : 'rgba(24,128,56,0.2)'}`,
+          }}>
+            <div className="stat-label">{hasDebt ? '⚠️ Outstanding Debt' : '✅ Outstanding Debt'}</div>
+            <div style={{
+              fontWeight: 700, fontSize: 22,
+              color: hasDebt ? '#d93025' : '#188038',
+              fontFamily: 'Inter, sans-serif'
+            }}>
+              {(profile.debt ?? 0).toFixed(2)} <span style={{fontSize: 13, fontWeight: 600}}>AZN</span>
+            </div>
+            <div className="stat-subtext" style={{marginTop: 4}}>
+              {hasDebt ? 'Wristband locked — pay to unlock' : 'No debt — you\'re all clear'}
+            </div>
+          </div>
         </div>
 
         {/* ── RIGHT COLUMN: Cards ── */}
@@ -369,17 +387,6 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
               <div>
                 <div style={{color: 'white', fontWeight: 700, fontSize: 16, letterSpacing: 0.3}}>Load Daily Balance</div>
                 <div style={{color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 2}}>Pre-authorize from your bank card · resets at 3 AM</div>
-              </div>
-              <div style={{
-                background: 'rgba(255,255,255,0.15)',
-                borderRadius: 12,
-                padding: '6px 12px',
-                fontSize: 12,
-                color: 'white',
-                fontWeight: 600,
-                whiteSpace: 'nowrap'
-              }}>
-                🏦 {profile.bank_balance?.toFixed(2) ?? '—'} AZN
               </div>
             </div>
 
