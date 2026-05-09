@@ -646,6 +646,14 @@ def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):
     family = db.query(models.FamilyAccount).filter(
         models.FamilyAccount.master_wallet_id == wallet.id
     ).first()
+
+    is_master = True
+    if not family:
+        sub = db.query(models.SubAccount).filter(models.SubAccount.child_wallet_id == wallet.id).first()
+        if sub:
+            family = sub.family
+            is_master = False
+
     if not family:
         raise HTTPException(status_code=404, detail="No family account for this wristband.")
 
@@ -669,11 +677,14 @@ def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):
             "spend_reset_date"    : str(sub.spend_reset_date),
         })
 
+    master_wallet = db.query(models.Wallet).filter(models.Wallet.id == family.master_wallet_id).first()
+
     return {
         "family_name"     : family.family_name,
-        "master_nfc_uid"  : nfc_uid,
-        "master_balance"  : wallet.balance,
+        "master_nfc_uid"  : master_wallet.nfc_uid if master_wallet else None,
+        "master_balance"  : master_wallet.balance if master_wallet else 0.0,
         "children"        : children,
+        "is_master"       : is_master
     }
 
 @app.get("/database_view")

@@ -307,15 +307,16 @@ export default function FamilyWallet({ nfcUid }) {
         </div>
       </div>
 
-      {/* Children */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#297288', display: 'flex', alignItems: 'center', gap: 6 }}>
           <IconChild /> Children ({familyData.children.length})
         </div>
-        <button style={{ ...btnOutline, padding: '6px 14px', fontSize: 12 }}
-          onClick={() => { setView('add_child'); setMsg({ text: '', ok: true }) }}>
-          <IconAdd /> Add Child
-        </button>
+        {familyData.is_master && (
+          <button style={{ ...btnOutline, padding: '6px 14px', fontSize: 12 }}
+            onClick={() => { setView('add_child'); setMsg({ text: '', ok: true }) }}>
+            <IconAdd /> Add Child
+          </button>
+        )}
       </div>
 
       {familyData.children.length === 0 ? (
