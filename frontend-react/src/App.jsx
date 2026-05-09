@@ -243,7 +243,7 @@ function App() {
       
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<UserDashboard setIsAdmin={setIsAdmin} setUid={setUid} />} />
+        <Route path="/dashboard" element={<UserDashboard setIsAdmin={setIsAdmin} setUid={setUid} uid={uid} />} />
         <Route path="/admin" element={isAdmin ? <Admin adminUid={uid} /> : <Navigate to="/dashboard" replace />} />
         <Route path="/register" element={<Register adminUid={uid} />} />
       </Routes>

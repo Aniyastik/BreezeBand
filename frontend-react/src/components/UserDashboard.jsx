@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../api'
 import FamilyWallet from './FamilyWallet'
 
-export default function UserDashboard({ setIsAdmin, setUid }) {
+export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
   const [history, setHistory] = useState([])
@@ -13,6 +13,14 @@ export default function UserDashboard({ setIsAdmin, setUid }) {
   const [loadAmount, setLoadAmount] = useState('')
   const [loadStatus, setLoadStatus] = useState({ msg: '', type: '' })
   const [loadLoading, setLoadLoading] = useState(false)
+
+  // Auto-load profile from DB when uid is available (after refresh or re-login)
+  useEffect(() => {
+    if (propUid && !profile) {
+      fetchDashboardData(propUid)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propUid])
 
 
   const handleManualSubmit = async () => {
