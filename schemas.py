@@ -33,6 +33,17 @@ class TopUpRequest(BaseModel):
     nfc_uid: str
     amount: float
 
+class DailyLoadRequest(BaseModel):
+    nfc_uid: str
+    amount: float  # Amount to pre-authorize / hold from the bank card
+
+class DailyLoadResponse(BaseModel):
+    status: str
+    message: str
+    wristband_balance: float
+    bank_balance: float   # Real bank balance — shown for confirmation, NOT deducted
+    daily_hold: float
+
 # ── Family Wallets / RBAC ─────────────────────────────────────────────────────
 
 class FamilyAccountCreate(BaseModel):

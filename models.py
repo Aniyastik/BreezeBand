@@ -24,6 +24,9 @@ class Wallet(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     nfc_uid = Column(String, unique=True, index=True) # Qolbağın arxasında dayanan unikal stiker ID-si
     balance = Column(Float, default=0.0)
+    # Pre-authorization / daily hold fields
+    daily_hold = Column(Float, default=0.0)  # Amount reserved from bank card for today
+    hold_date  = Column(Date,  nullable=True) # Date the hold was set
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     owner = relationship("User", back_populates="wallet")

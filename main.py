@@ -48,6 +48,9 @@ try:
                 spend_reset_date     DATE    NOT NULL DEFAULT CURRENT_DATE
             );
         """))
+        # Pre-authorization / daily hold columns
+        conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS daily_hold FLOAT DEFAULT 0.0;"))
+        conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS hold_date  DATE;"))
 except Exception as e:
     print(f"Migrasiya xətası (göz ardı edilə bilər): {e}")
 app = FastAPI(title="Sea Breeze Mini-Economy Engine")
@@ -300,6 +303,78 @@ def topup_wallet(data: schemas.TopUpRequest, db: Session = Depends(get_db)):
     r.set(f"wallet:{nfc_uid}:balance", wallet.balance)
     
     return {"status": "success", "message": f"{data.amount} AZN added to wristband from bank!", "new_wallet_balance": wallet.balance, "new_bank_balance": bank_account.balance}
+
+
+# ==============================================================================
+# DAILY BALANCE PRE-AUTHORIZATION (HOLD SYSTEM)
+# ==============================================================================
+@app.post("/load_daily_balance", response_model=schemas.DailyLoadResponse)
+def load_daily_balance(data: schemas.DailyLoadRequest, db: Session = Depends(get_db)):
+    """
+    Sets a temporary daily balance on the wristband from the user's bank card.
+
+    Rules:
+    - Bank card must have >= requested amount, otherwise rejected.
+    - If valid: wristband balance is set to the requested amount as a HOLD.
+    - The real bank card is NOT charged yet.
+    - At end of day (/settle_day), only the amount actually spent is charged.
+    - Unspent balance simply resets to 0 on the wristband — bank is untouched.
+    - Cannot load twice on the same day without settling first.
+    """
+    nfc_uid = data.nfc_uid.lower().strip()
+    today   = _date.today()
+
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+
+    bank_account = db.query(models.BankAccount).filter(
+        models.BankAccount.user_id == wallet.user_id
+    ).first()
+    if not bank_account:
+        raise HTTPException(status_code=404, detail="Bank account not found.")
+
+    # Block double-loading on the same calendar day
+    if wallet.hold_date == today and wallet.daily_hold > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Daily balance already loaded today ({wallet.daily_hold} AZN held). "
+                "Run /settle_day first to reset."
+            )
+        )
+
+    # Bank card must have at least the requested amount
+    if bank_account.balance < data.amount:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Bank card only has {bank_account.balance:.2f} AZN. "
+                f"Cannot pre-authorize {data.amount:.2f} AZN."
+            )
+        )
+
+    # Grant the hold — bank balance is NOT touched here
+    wallet.balance    = data.amount
+    wallet.daily_hold = data.amount
+    wallet.hold_date  = today
+    db.commit()
+    db.refresh(wallet)
+
+    r.set(f"wallet:{nfc_uid}:balance", wallet.balance)
+
+    return {
+        "status"           : "success",
+        "message"          : (
+            f"{data.amount} AZN pre-authorized as your daily balance. "
+            "Your real bank balance is untouched. "
+            "At end of day only what you spend will be charged."
+        ),
+        "wristband_balance": wallet.balance,
+        "bank_balance"     : bank_account.balance,
+        "daily_hold"       : wallet.daily_hold,
+    }
+
 
 # ==============================================================================
 # HƏDƏF NÖQTƏSİ: Toxundur və Keç (Sıfır Ləngimə Mühərriki)
@@ -611,52 +686,78 @@ def get_history(nfc_uid: str, db: Session = Depends(get_db)):
     return result
 
 async def process_settlement(db: Session):
-    # Bütün pending_settlement tranzaksiyaları tapırıq
-    pending_txs = db.query(models.Transaction).filter(models.Transaction.status == "pending_settlement").all()
-    
-    if not pending_txs:
-        return {"status": "success", "message": "Gözləyən ödəniş yoxdur", "total_settled": 0.0}
-        
-    # Cüzdanlara görə qruplaşdırırıq ki, banka hər nəfər üçün tək sorğu getsin
+    """
+    End-of-day settlement.
+    - Finds every wallet with an active daily hold.
+    - Charges ONLY the amount actually spent to the real bank card.
+    - If nothing was spent, the hold is released silently (bank untouched).
+    - Resets wristband balance, daily_hold, and hold_date for all wallets.
+    """
     from collections import defaultdict
-    user_totals = defaultdict(float)
-    tx_by_wallet = defaultdict(list)
-    
+
+    held_wallets = db.query(models.Wallet).filter(models.Wallet.daily_hold > 0).all()
+    pending_txs  = db.query(models.Transaction).filter(
+        models.Transaction.status == "pending_settlement"
+    ).all()
+
+    if not pending_txs and not held_wallets:
+        return {"status": "success", "message": "Gözləyən ödəniş yoxdur", "total_settled": 0.0}
+
+    spent_by_wallet: defaultdict[int, float] = defaultdict(float)
+    tx_by_wallet:    defaultdict[int, list]  = defaultdict(list)
     for tx in pending_txs:
-        user_totals[tx.wallet_id] += tx.amount
+        spent_by_wallet[tx.wallet_id] += tx.amount
         tx_by_wallet[tx.wallet_id].append(tx)
-        
-    total_settled = 0.0
-    
-    for wallet_id, amount in user_totals.items():
+
+    port           = os.environ.get("PORT", 8000)
+    total_settled  = 0.0
+    all_wallet_ids = {w.id for w in held_wallets} | set(spent_by_wallet.keys())
+
+    for wallet_id in all_wallet_ids:
         wallet = db.query(models.Wallet).filter(models.Wallet.id == wallet_id).first()
         if not wallet:
             continue
-            
-        # Bank API-nə toplu (batch) sorğu göndəririk
-        try:
-            port = os.environ.get("PORT", 8000)
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"http://127.0.0.1:{port}/bank/charge", 
-                    json={"nfc_uid": wallet.nfc_uid, "amount": amount},
-                    timeout=10.0
-                )
-            
-            if response.status_code == 200 and response.json().get("bank_status") == "approved":
-                # Uğurludursa, o cüzdanın bütün pending ödənişlərini completed edirik
-                for tx in tx_by_wallet[wallet_id]:
-                    tx.status = "completed"
-                total_settled += amount
-        except Exception as e:
-            print(f"Bank xətası: {e}")
-            pass # Bu cüzdan üçün alınmadı, digərlərinə keçirik
-            
+
+        actually_spent = spent_by_wallet.get(wallet_id, 0.0)
+
+        if actually_spent > 0:
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        f"http://127.0.0.1:{port}/bank/charge",
+                        json={"nfc_uid": wallet.nfc_uid, "amount": actually_spent},
+                        timeout=10.0
+                    )
+                if response.status_code == 200 and response.json().get("bank_status") == "approved":
+                    for tx in tx_by_wallet[wallet_id]:
+                        tx.status = "completed"
+                    total_settled += actually_spent
+                    print(
+                        f"[SETTLEMENT] {wallet.nfc_uid}: charged {actually_spent:.2f} AZN "
+                        f"(held {wallet.daily_hold:.2f}, "
+                        f"{wallet.daily_hold - actually_spent:.2f} released)"
+                    )
+                else:
+                    print(f"[SETTLEMENT] Bank declined for {wallet.nfc_uid}")
+            except Exception as e:
+                print(f"[SETTLEMENT] Bank error for {wallet.nfc_uid}: {e}")
+        else:
+            print(
+                f"[SETTLEMENT] {wallet.nfc_uid}: nothing spent, "
+                f"{wallet.daily_hold:.2f} AZN hold released. Bank untouched."
+            )
+
+        # Always reset the wristband at end of day
+        wallet.balance    = 0.0
+        wallet.daily_hold = 0.0
+        wallet.hold_date  = None
+        r.set(f"wallet:{wallet.nfc_uid}:balance", 0.0)
+
     db.commit()
-    
+
     return {
-        "status": "success", 
-        "message": "Günün sonu hesablaşması bitdi!", 
+        "status"       : "success",
+        "message"      : "Günün sonu hesablaşması bitdi! Xərclənməyən məbləğlər bankdan ÇIXILMADI.",
         "total_settled": round(total_settled, 2)
     }
 
