@@ -418,23 +418,71 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
             </div>
           </div>
 
-          <h3 className="section-title" style={{marginTop: 0}}>Today's Transactions</h3>
+          <h3 className="section-title" style={{marginTop: 0}}>Transaction History</h3>
 
           {history.length === 0 ? (
             <div className="empty-state">No transactions yet.</div>
-          ) : (
-            <div className="history-list">
-              {history.map(tx => (
-                <div key={tx.id} className={`history-item ${tx.status === 'completed' ? 'border-success' : 'border-warning'}`}>
-                  <div className="history-details">
-                    <span className="font-bold" style={{color: 'var(--text-primary)'}}>{tx.vendor_name}</span>
-                    <span className="text-xs text-muted mt-xs">{new Date(tx.timestamp).toLocaleString('en-US', {hour: 'numeric', minute: '2-digit'})} • {tx.status === 'completed' ? 'Settled' : 'Pending'}</span>
-                  </div>
-                  <span className={`history-amount ${tx.status === 'completed' ? 'text-success' : 'text-warning'}`}>{tx.amount} AZN</span>
+          ) : (() => {
+            // Group transactions by date
+            const grouped = {}
+            const today = new Date(); today.setHours(0,0,0,0)
+            const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
+
+            history.forEach(tx => {
+              const d = new Date(tx.timestamp); d.setHours(0,0,0,0)
+              let label
+              if (d.getTime() === today.getTime()) label = 'Today'
+              else if (d.getTime() === yesterday.getTime()) label = 'Yesterday'
+              else label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+              if (!grouped[label]) grouped[label] = []
+              grouped[label].push(tx)
+            })
+
+            const statusLabel = (s) => {
+              if (s === 'completed') return { text: 'Settled', color: '#188038', bg: 'rgba(24,128,56,0.08)' }
+              if (s === 'settled_with_debt') return { text: 'Settled (debt)', color: '#d93025', bg: 'rgba(217,48,37,0.08)' }
+              return { text: 'Processing', color: '#e37400', bg: 'rgba(227,116,0,0.08)' }
+            }
+
+            return Object.entries(grouped).map(([dateLabel, txs]) => (
+              <div key={dateLabel} style={{marginBottom: 20}}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
+                  textTransform: 'uppercase', letterSpacing: 1,
+                  marginBottom: 8, paddingBottom: 6,
+                  borderBottom: '1px solid rgba(41,114,136,0.1)'
+                }}>
+                  {dateLabel}
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="history-list" style={{gap: 6}}>
+                  {txs.map(tx => {
+                    const st = statusLabel(tx.status)
+                    return (
+                      <div key={tx.id} className="history-item" style={{borderLeft: `3px solid ${st.color}`}}>
+                        <div className="history-details">
+                          <span className="font-bold" style={{color: 'var(--text-primary)'}}>{tx.vendor_name}</span>
+                          <div style={{display:'flex',gap:8,alignItems:'center',marginTop:3}}>
+                            <span className="text-xs text-muted">
+                              {new Date(tx.timestamp).toLocaleString('en-US', {hour: 'numeric', minute: '2-digit'})}
+                            </span>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, color: st.color,
+                              background: st.bg, padding: '2px 8px', borderRadius: 6
+                            }}>
+                              {st.text}
+                            </span>
+                          </div>
+                        </div>
+                        <span style={{fontWeight: 700, fontSize: 15, color: st.color}}>
+                          -{tx.amount.toFixed(2)} AZN
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))
+          })()}
 
           {/* ── Family Wallet Panel ── */}
           <div style={{marginTop: 32}}>
