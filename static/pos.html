@@ -492,9 +492,7 @@
     <div class="result-title" id="resultTitle"></div>
     <div class="result-amount" id="resultAmount"></div>
     <div class="result-detail" id="resultDetail"></div>
-    <div class="result-balance" id="resultBalance" style="display:none;">
-      Remaining balance: <span id="remainingBal"></span> AZN
-    </div>
+          <!-- Balance hidden from POS for privacy -->
     <button class="close-btn" id="closeBtn">Done</button>
   </div>
 </div>
@@ -766,8 +764,7 @@
       amtEl.className = 'result-amount';
       amtEl.textContent = `${amount.toFixed(2)} AZN`;
       detail.textContent = `Charged to wristband ${uid}`;
-      balance.style.display = 'block';
-      remBal.textContent = remaining?.toFixed(2) ?? '—';
+      // Balance hidden from POS for user privacy
       if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
     } else {
       icon.className = 'result-icon error';
