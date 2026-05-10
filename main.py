@@ -687,6 +687,7 @@ class RealLLM:
         if not api_key:
             return "Error: OPENAI_API_KEY is not set."
             
+        api_key = api_key.strip()
         client = AsyncOpenAI(api_key=api_key)
         
         user_age = context.get("age", 18)
