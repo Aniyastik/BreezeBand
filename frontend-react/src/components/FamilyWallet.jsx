@@ -73,7 +73,19 @@ function SpendBar({ spent, limit }) {
 }
 
 /* ─── child card ─────────────────────────────────────────────────────────────── */
-function ChildCard({ child }) {
+function ChildCard({ child, onUpdateLimit }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(child.daily_spending_limit.toString());
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (isNaN(parseFloat(editValue))) return;
+    setSaving(true);
+    await onUpdateLimit(child.nfc_uid, parseFloat(editValue));
+    setSaving(false);
+    setIsEditing(false);
+  };
+
   return (
     <div style={{
       background: 'linear-gradient(135deg,#fff,#f0f7fb)',
@@ -110,6 +122,32 @@ function ChildCard({ child }) {
         </div>
       </div>
       <SpendBar spent={child.current_daily_spend} limit={child.daily_spending_limit} />
+      
+      {isEditing ? (
+        <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input 
+            type="number" 
+            value={editValue} 
+            onChange={e => setEditValue(e.target.value)} 
+            style={{ width: 70, padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(41,114,136,0.3)', fontSize: 12, outline: 'none' }} 
+            min="0"
+          /> 
+          <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>AZN</span>
+          <button onClick={handleSave} disabled={saving} style={{ marginLeft: 6, background: '#297288', color: 'white', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button onClick={() => { setIsEditing(false); setEditValue(child.daily_spending_limit.toString()); }} style={{ background: 'transparent', color: '#666', border: '1px solid #ccc', borderRadius: 6, padding: '5px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={() => setIsEditing(true)} style={{ background: 'transparent', color: '#297288', border: 'none', padding: 0, fontSize: 11, cursor: 'pointer', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            ✏️ Edit Limit
+          </button>
+        </div>
+      )}
+
       <LocationBadge location={child.location} />
     </div>
   )
@@ -189,6 +227,29 @@ export default function FamilyWallet({ nfcUid }) {
     } catch { setMsg({ text: 'Network error.', ok: false }) }
     finally  { setSaving(false) }
   }
+
+  /* update child limit */
+  const handleUpdateLimit = async (childUid, newLimit) => {
+    try {
+      const res = await fetch(`${API_BASE}/family/update_child_limit`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          master_nfc_uid: nfcUid,
+          child_nfc_uid: childUid,
+          new_limit: newLimit
+        })
+      });
+      if (res.ok) {
+        setMsg({ text: `✓ Spending limit updated successfully!`, ok: true });
+        fetchFamily();
+      } else {
+        const data = await res.json();
+        setMsg({ text: data.detail || 'Failed to update limit', ok: false });
+      }
+    } catch {
+      setMsg({ text: 'Network error while updating limit.', ok: false });
+    }
+  };
 
   /* ── Card shell ─────────────────────────────────────────────────────────── */
   const cardStyle = {
@@ -375,7 +436,7 @@ export default function FamilyWallet({ nfcUid }) {
           No children linked yet. Tap "Add Child" to get started.
         </div>
       ) : (
-        familyData.children.map((child, i) => <ChildCard key={i} child={child} />)
+        familyData.children.map((child, i) => <ChildCard key={i} child={child} onUpdateLimit={handleUpdateLimit} />)
       )}
 
       {msg.text && (

@@ -76,6 +76,12 @@ class SubAccountCreate(BaseModel):
     age: int = Field(..., ge=0, le=120)
     daily_spending_limit: float = Field(20.0, ge=0)
 
+class UpdateChildLimitRequest(BaseModel):
+    """Update the daily spending limit of an existing child account."""
+    master_nfc_uid: str
+    child_nfc_uid: str
+    new_limit: float = Field(..., ge=0)
+
 class FamilyTransactionResponse(BaseModel):
     status: str
     message: str

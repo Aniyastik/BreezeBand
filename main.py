@@ -910,6 +910,42 @@ async def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
     return {"reply": response_text, "context_injected": context}
 
 
+@app.post("/family/update_child_limit")
+def update_child_limit(req: schemas.UpdateChildLimitRequest, db: Session = Depends(get_db)):
+    """Update the daily spending limit of an existing child account."""
+    master_nfc = req.master_nfc_uid.lower().strip()
+    child_nfc = req.child_nfc_uid.lower().strip()
+
+    master_wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == master_nfc).first()
+    if not master_wallet:
+        raise HTTPException(status_code=404, detail="Master wristband not found.")
+
+    family = db.query(models.FamilyAccount).filter(models.FamilyAccount.master_wallet_id == master_wallet.id).first()
+    if not family:
+        raise HTTPException(status_code=404, detail="Family account not found.")
+
+    child_wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == child_nfc).first()
+    if not child_wallet:
+        raise HTTPException(status_code=404, detail="Child wristband not found.")
+
+    sub_account = db.query(models.SubAccount).filter(
+        models.SubAccount.family_id == family.id,
+        models.SubAccount.child_wallet_id == child_wallet.id
+    ).first()
+    
+    if not sub_account:
+        raise HTTPException(status_code=404, detail="Child is not linked to this family account.")
+
+    sub_account.daily_spending_limit = req.new_limit
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Daily limit updated to {req.new_limit:.2f} AZN",
+        "child_name": sub_account.child_name,
+        "new_limit": req.new_limit
+    }
+
 @app.get("/family/info/{master_nfc_uid}")
 def get_family_info(master_nfc_uid: str, db: Session = Depends(get_db)):
     """Return the full family account with all children and their spend status."""
@@ -1368,6 +1404,8 @@ async def process_settlement(db: Session):
         wallet.hold_date  = None
         r.set(f"wallet:{wallet.nfc_uid}:balance", 0.0)
 
+    # Reset child daily spend counters across the entire resort
+    db.query(models.SubAccount).update({"current_daily_spend": 0.0})
     db.commit()
 
     return {
