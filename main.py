@@ -11,6 +11,10 @@ import random
 import json
 from datetime import datetime, date as _date, timezone
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 import models
 import schemas
