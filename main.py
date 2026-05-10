@@ -673,79 +673,88 @@ class MockLLM:
         msg = user_message.lower()
         age = context.get("age", 18)
         balance = context.get("balance", 0)
+        bank_balance = context.get("bank_balance", 0)
         location = context.get("location", "Unknown")
+
+        total_funds = balance + bank_balance
 
         # Semantic Route: Greetings
         if msg in ["hi", "hello", "hey", "good morning", "good evening", "good afternoon", "start"]:
-            return f"Hello! I am your BreezeBand AI Concierge. I see you have {balance:.2f} AZN to spend. How can I help you enjoy your stay at Sea Breeze today?"
+            return f"Hello! I am your BreezeBand AI Concierge. I see your current wristband balance is {balance:.2f} AZN (with {bank_balance:.2f} AZN in your bank). How can I help you enjoy your stay at Sea Breeze today?"
 
         # Semantic Route: Drink/Thirsty/Alcohol
         if "drink" in msg or "thirsty" in msg or "wine" in msg or "beer" in msg or "alcohol" in msg or "cocktail" in msg:
             if age < 18:
-                return "Since you're under 18, I can't recommend the Wine Store. However, you can grab a refreshing juice or smoothie at the Park Cafe or The Chayxana!"
+                return "Since you're under 18, I can't recommend the Wine Store. However, you can grab a delicious, freshly squeezed juice or a tropical smoothie at the Park Cafe or The Chayxana!"
             else:
-                return "You're of age! I highly recommend the 'Wine store and bar' for a great selection of drinks. It's the perfect place to relax."
+                return "You're of age! I highly recommend the 'Wine store and bar' for a premium selection of fine wines and signature cocktails. It's the perfect place to relax and enjoy the evening."
         
         # Semantic Route: Sweet/Dessert
         if "sweet" in msg or "swwet" in msg or "dessert" in msg or "cake" in msg or "ice cream" in msg or "sugar" in msg:
-            return "Craving something sweet? You can definitely find great desserts and sweets at Park Cafe or Polo Cafe! If you want a quick sweet snack, Shaurma No1 might also have some options."
+            return "Craving something sweet? You can find exquisite, handcrafted desserts and pastries at Park Cafe or Polo Cafe! If you want a quick sweet snack on the go, Shaurma No1 might also have some delightful options."
 
         # Semantic Route: Coffee/Tea
         if "coffee" in msg or "tea" in msg or "latte" in msg or "espresso" in msg or "cafe" in msg or "caffeine" in msg:
-            return "Need a caffeine boost? Park Cafe and Polo Cafe serve excellent coffee. For traditional tea, definitely visit The Chayxana!"
+            return "Need a caffeine boost? Park Cafe and Polo Cafe serve excellent, barista-crafted coffee using premium roasted beans. For a more traditional experience, definitely visit The Chayxana for authentic Azerbaijani tea and sweets!"
 
         # Semantic Route: Specific Venues
         if "scalini" in msg or "shore house" in msg or "shaurma" in msg or "bosior" in msg:
             if "shaurma" in msg:
-                return "Shaurma No1 is a fantastic, budget-friendly option for a quick and tasty bite!"
-            if balance < 20:
-                return f"That's a great choice, but keeping your balance ({balance:.2f} AZN) in mind, it might be a bit pricey. Shaurma No1 or Park Cafe could be safer bets for your budget!"
-            return "Excellent choice! That venue offers a fantastic and premium dining experience."
+                return "Shaurma No1 is a fantastic, budget-friendly option for a quick, incredibly tasty bite, perfect for when you're on the move!"
+            if total_funds < 20:
+                return f"That's a fantastic choice, but considering your total available funds ({total_funds:.2f} AZN), it might be a bit pricey. Shaurma No1 or Park Cafe could be more comfortable for your budget while still being delicious!"
+            if balance < 20 and bank_balance >= 20:
+                return f"Excellent choice! That venue offers a fantastic and premium dining experience. I notice your wristband balance is low ({balance:.2f} AZN), but you have plenty in your bank ({bank_balance:.2f} AZN). Don't forget to load your daily balance from the dashboard before you go!"
+            return "Excellent choice! That venue offers a fantastic, world-class dining experience with premium service and an unforgettable atmosphere."
 
         # Semantic Route: Eat/Hungry
         if "eat" in msg or "hungry" in msg or "food" in msg or "restaurant" in msg or "dinner" in msg or "lunch" in msg or "breakfast" in msg or "snack" in msg:
-            if balance < 20:
-                return f"I see your balance is {balance:.2f} AZN. Scalini or Shore House might be a bit pricey right now, but you can definitely grab a delicious quick bite at Shaurma No1 or Fish Box!"
+            if total_funds < 20:
+                return f"I see your wristband balance is {balance:.2f} AZN. Scalini or Shore House might be a bit pricey right now, but you can definitely grab a delicious, satisfying quick bite at Shaurma No1 or Fish Box!"
+            elif balance < 20 and bank_balance >= 20:
+                return f"You have plenty of funds in your bank ({bank_balance:.2f} AZN), but your wristband balance is currently {balance:.2f} AZN. I highly recommend dining at Shore House Restaurant and Lounge or enjoying premium Italian at Scalini! Just remember to load your daily balance from the dashboard first."
             else:
-                return "You have plenty in your balance! I highly recommend dining at Shore House Restaurant and Lounge, BOSIOR, or enjoying some premium Italian at Scalini."
+                return "You have plenty in your balance! For an exquisite culinary experience, I highly recommend dining at Shore House Restaurant and Lounge, BOSIOR, or enjoying authentic, premium Italian cuisine at Scalini."
                 
         # Semantic Route: Relax/Spa/Massage
         if "relax" in msg or "spa" in msg or "massage" in msg or "zen" in msg or "yoga" in msg or "wellness" in msg:
-            return "Looking to unwind? I highly recommend booking a session at the Anti-aging Center for some pampering, or visiting Nine Senses for yoga and relaxation."
+            return "Looking to unwind and rejuvenate? I highly recommend booking a luxurious session at the Anti-aging Center for some world-class pampering, or visiting Nine Senses for a serene yoga and wellness experience."
 
         # Semantic Route: Gym/Workout/Sport
         if "gym" in msg or "workout" in msg or "sport" in msg or "exercise" in msg or "fitness" in msg or "train" in msg:
-            return "Want to break a sweat? Crocus Fitness is our state-of-the-art gym facility. Don't forget your BreezeBand to access the lockers!"
+            return "Want to break a sweat? Crocus Fitness is our state-of-the-art gym facility featuring premium equipment and personal trainers. Don't forget your BreezeBand to seamlessly access the lockers and facilities!"
 
         # Semantic Route: Beach/Swim/Pool
         if "beach" in msg or "swim" in msg or "pool" in msg or "sun" in msg or "water" in msg or "sea" in msg:
-            return "It's a beautiful day for the water! You can relax at the Hovuz Bari (Pool Bar) or head down to the Sport Beach Club to enjoy the sea breeze."
+            return "It's a beautiful day for the water! You can relax and soak up the sun at the luxurious Hovuz Bari (Pool Bar) or head down to the Sport Beach Club to enjoy the pristine sea breeze and refreshing waves."
 
         # Semantic Route: Kids/Family
         if "kid" in msg or "child" in msg or "family" in msg or "circus" in msg or "children" in msg:
-            return "Sea Breeze is great for families! The kids will absolutely love the Italian Circus or spending hours at Funzilla."
+            return "Sea Breeze is a paradise for families! The kids will absolutely be mesmerized by the spectacular Italian Circus, or they can spend hours having the time of their lives at Funzilla."
 
         # Semantic Route: Fun/Activity
         if "fun" in msg or "activity" in msg or "bored" in msg or "play" in msg or "game" in msg or "karting" in msg:
-            return "Looking for fun? Check out Funzilla or race your friends at Funz karting! They are super popular and guarantee a great time."
+            return "Looking for an adrenaline rush or some great entertainment? Check out the incredible Funzilla or race your friends at the thrilling Funz karting track! They are extremely popular and guarantee an unforgettable time."
             
         # Semantic Route: Location/Near me
         if "where" in msg or "near" in msg or "around" in msg or "lost" in msg or "location" in msg:
             if location != "Unknown":
                 loc_name = location.replace("_gateway", "").replace("_", " ").title()
-                return f"I see from your wristband signal that you are currently near the {loc_name}. Feel free to check out the venues right around you, or hop on a buggy to explore the rest of the resort!"
-            return "I'm not quite sure where your wristband is right now (no signal detected), but the Pool area or Lobby are always great starting points!"
+                return f"I can see from your advanced BreezeBand signal that you are currently near the {loc_name}. Feel free to check out the amazing venues right around you, or easily hop on a resort buggy to explore the rest of our beautiful property!"
+            return "I'm currently unable to pinpoint your exact location (no active signal detected), but the vibrant Pool area or our grand Lobby are always excellent starting points for your adventure!"
 
         # Semantic Route: Balance/Money
         if "balance" in msg or "money" in msg or "cost" in msg or "price" in msg or "pay" in msg or "azn" in msg:
-            return f"Your current available balance is {balance:.2f} AZN. Remember, you can tap your BreezeBand at any POS terminal to pay effortlessly!"
+            if bank_balance > 0 and balance == 0:
+                return f"Your current wristband balance is {balance:.2f} AZN, but you have {bank_balance:.2f} AZN in your linked bank account. You can easily load funds to your wristband via the dashboard to pay effortlessly at any POS terminal!"
+            return f"Your current available wristband balance is {balance:.2f} AZN (with {bank_balance:.2f} AZN in your bank). Remember, you can simply tap your BreezeBand at any POS terminal across the resort to pay instantly and effortlessly!"
 
         # Semantic Route: Emergency/Help
         if "help" in msg or "emergency" in msg or "doctor" in msg or "police" in msg or "guard" in msg:
-            return "If you have an emergency, please go immediately to the Lobby or approach any Sea Breeze Security Staff. We are here to help 24/7."
+            return "Your safety is our absolute priority. If you have a medical or security emergency, please proceed immediately to the main Lobby or approach any Sea Breeze Security Staff member. We have a dedicated team available 24/7 to assist you."
 
         # Default fallback
-        return f"I'm sorry, I'm just an AI Concierge and I didn't quite catch that. I see you have {balance:.2f} AZN. Can I recommend a restaurant, activity, or help you find your way around?"
+        return f"I'm sorry, as your AI Concierge, I didn't quite catch that. I see your wristband has {balance:.2f} AZN. Would you like me to recommend a spectacular restaurant, an exciting activity, or help you navigate our beautiful resort?"
 
 
 @app.post("/api/ai/chat")
@@ -766,14 +775,23 @@ def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
     
     # 2. Context: Balance
     is_child = sub is not None
+    bank_balance = 0.0
     if is_child:
+        master_wallet = db.query(models.Wallet).filter(models.Wallet.id == sub.family.master_wallet_id).first()
         if wallet.balance > 0:
             available_balance = wallet.balance
         else:
-            master_wallet = db.query(models.Wallet).filter(models.Wallet.id == sub.family.master_wallet_id).first()
-            available_balance = min(master_wallet.balance, sub.daily_spending_limit - sub.current_daily_spend)
+            available_balance = min(master_wallet.balance, sub.daily_spending_limit - sub.current_daily_spend) if master_wallet else 0.0
+            
+        if master_wallet:
+            bank = db.query(models.BankAccount).filter(models.BankAccount.user_id == master_wallet.user_id).first()
+            if bank:
+                bank_balance = bank.balance
     else:
         available_balance = wallet.balance
+        bank = db.query(models.BankAccount).filter(models.BankAccount.user_id == wallet.user_id).first()
+        if bank:
+            bank_balance = bank.balance
         
     # 3. Context: Location
     loc_str = r.hget("ble_locations", nfc_uid)
@@ -787,6 +805,7 @@ def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
     context = {
         "age": age,
         "balance": available_balance,
+        "bank_balance": bank_balance,
         "location": location,
         "vendors": vendor_list
     }
