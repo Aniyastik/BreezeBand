@@ -666,6 +666,77 @@ def get_hardware_simulator():
 
 # ── AI Concierge ──────────────────────────────────────────────────────────────
 
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
+
+class RealLLM:
+    """Connects to OpenAI to generate dynamic, luxury concierge responses."""
+    
+    @staticmethod
+    def generate_response(user_message: str, context: dict) -> str:
+        if not OpenAI:
+            return "Error: OpenAI library is not installed."
+            
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return "Error: OPENAI_API_KEY is not set."
+            
+        client = OpenAI(api_key=api_key)
+        
+        user_age = context.get("age", 18)
+        current_balance = context.get("balance", 0.0)
+        bank_balance = context.get("bank_balance", 0.0)
+        current_location = context.get("location", "Unknown")
+        vendors = context.get("vendors", [])
+        
+        total_funds = current_balance + bank_balance
+        resort_database_json = json.dumps(vendors, indent=2)
+
+        system_prompt = f"""
+You are **Breeze**, the elite digital concierge for the world-class Sea Breeze Resort. Your tone is warm, luxurious, highly professional, and slightly ocean-themed. You provide 5-star service to every guest, ensuring their stay is seamless, memorable, and extraordinary.
+
+### REAL-TIME GUEST CONTEXT
+- **Age**: {user_age}
+- **Current Wristband Balance**: {current_balance:.2f} AZN
+- **Current Bank Balance**: {bank_balance:.2f} AZN
+- **Total Available Funds**: {total_funds:.2f} AZN
+- **Current Location**: {current_location}
+
+### RESORT DATABASE
+{resort_database_json}
+
+### STRICT CONSTRAINTS (RBAC)
+1. **Age Restriction (CRITICAL)**: NEVER recommend alcohol, bars, or any 18+/21+ venues to guests if their Age is under 18. If a minor requests restricted access, politely decline and immediately offer a highly appealing, age-appropriate alternative.
+2. **Financial Awareness**: NEVER recommend a venue or service if the guest's Total Available Funds cannot comfortably cover it. If they request an experience that exceeds their funds, graciously suggest a fantastic, budget-appropriate alternative without making them feel uncomfortable.
+3. **Accuracy**: Only recommend venues, restaurants, and activities that exist in the provided Resort Database. Do not invent locations.
+
+### BEHAVIORAL & FORMATTING RULES
+1. **Context Mastery**: Always weave the user's current context (Location, Balance, or Age) gracefully into your response. For example: "Since you are enjoying the sunshine by the Pool right now..." or "With your generous balance, you might enjoy..."
+2. **Rich Detail**: When recommending a location, do not just list the name. Describe the ambiance, signature items, or the luxury experience to build excitement.
+3. **Proactive Engagement**: ALWAYS end your response with a proactive follow-up question to keep the conversation going and anticipate their next need (e.g., "Shall I guide you to the quickest walking route?", "Would you like to hear about our sunset specials?").
+4. **Formatting**: 
+   - Use Markdown formatting.
+   - Use **bold text** for venue and service names.
+   - Use bullet points for listing multiple options.
+   - Include a few tasteful emojis (e.g., 🌊, 🍹, 🌴, ✨) to make the interface visually stunning and inviting.
+"""
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                temperature=0.7,
+                max_tokens=400
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"I'm sorry, I encountered an issue connecting to the concierge network: {str(e)}"
+
 class MockLLM:
     """Simulates an OpenAI LLM Call with Semantic Routing and Context Injection."""
     @staticmethod
@@ -824,7 +895,10 @@ def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
     """
     
     # Route to LLM
-    response_text = MockLLM.generate_response(system_prompt, req.message, context)
+    if os.environ.get("OPENAI_API_KEY"):
+        response_text = RealLLM.generate_response(req.message, context)
+    else:
+        response_text = MockLLM.generate_response(system_prompt, req.message, context)
     
     return {"reply": response_text, "context_injected": context}
 
