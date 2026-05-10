@@ -29,6 +29,7 @@ class Wallet(Base):
     daily_hold = Column(Float, default=0.0)  # Amount reserved from bank card for today
     hold_date  = Column(Date,  nullable=True) # Date the hold was set
     debt       = Column(Float, default=0.0)  # Outstanding debt from failed settlement
+    is_blocked = Column(Boolean, default=False)  # Blocked by owner (stolen/lost card)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     owner = relationship("User", back_populates="wallet")

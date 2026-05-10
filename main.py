@@ -59,6 +59,7 @@ try:
         conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS hold_date  DATE;"))
         conn.execute(text("ALTER TABLE users   ADD COLUMN IF NOT EXISTS password_hash VARCHAR;"))
         conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS debt FLOAT DEFAULT 0.0;"))
+        conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;"))
 except Exception as e:
     print(f"Migrasiya xətası (göz ardı edilə bilər): {e}")
 
@@ -457,6 +458,13 @@ def process_payment(payment: schemas.TransactionCreate, db: Session = Depends(ge
     wallet, sub, master_wallet = _resolve_nfc(nfc_uid, db)
     if wallet is None:
         raise HTTPException(status_code=404, detail="Wristband not found.")
+
+    # ── BLOCK GATE: block payment if wristband is blocked by owner ────────
+    if wallet.is_blocked:
+        raise HTTPException(
+            status_code=403,
+            detail="Wristband is BLOCKED by the owner. Payments are disabled."
+        )
 
     # ── DEBT GATE: block payment if user has outstanding debt ──────────────
     pay_wallet_for_debt = master_wallet if (sub is not None) else wallet
@@ -1081,6 +1089,7 @@ def get_profile(nfc_uid: str, db: Session = Depends(get_db)):
         "is_admin": user.is_admin,
         "has_password": bool(user.password_hash),
         "debt": wallet.debt or 0.0,
+        "is_blocked": bool(wallet.is_blocked),
         "family_member_type": family_member_type,
         "family_name": family_name,
         "location": location_data
@@ -1186,6 +1195,7 @@ def unlock_profile(data: schemas.UnlockRequest, db: Session = Depends(get_db)):
         "is_admin"        : user.is_admin,
         "has_password"    : bool(user.password_hash),
         "debt"            : wallet.debt or 0.0,
+        "is_blocked"      : bool(wallet.is_blocked),
         "family_member_type": family_member_type,
         "family_name"     : family_name
     }
@@ -1221,6 +1231,52 @@ def set_password(nfc_uid: str, data: schemas.SetPasswordRequest, db: Session = D
 
     db.commit()
     return {"status": "success", "message": msg}
+
+# ==============================================================================
+# WRISTBAND BLOCK / UNBLOCK
+# ==============================================================================
+
+@app.post("/wallet/block/{nfc_uid}")
+def block_wristband(nfc_uid: str, db: Session = Depends(get_db)):
+    """
+    Block a wristband — prevents all payments at POS.
+    Used when a wristband is lost or stolen.
+    """
+    nfc_uid = nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+    if wallet.is_blocked:
+        return {"status": "info", "message": "Wristband is already blocked.", "is_blocked": True}
+    wallet.is_blocked = True
+    db.commit()
+    return {"status": "success", "message": "Wristband BLOCKED. No payments can be made.", "is_blocked": True}
+
+
+@app.post("/wallet/unblock/{nfc_uid}")
+def unblock_wristband(nfc_uid: str, data: schemas.UnlockRequest, db: Session = Depends(get_db)):
+    """
+    Unblock a wristband — requires the account password for security.
+    """
+    nfc_uid = nfc_uid.lower().strip()
+    wallet = db.query(models.Wallet).filter(models.Wallet.nfc_uid == nfc_uid).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wristband not found.")
+    user = db.query(models.User).filter(models.User.id == wallet.user_id).first()
+
+    # Require password to unblock (security)
+    if user.password_hash:
+        if not data.password:
+            raise HTTPException(status_code=401, detail="Password required to unblock wristband.")
+        if not _verify_pw(data.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Incorrect password.")
+
+    if not wallet.is_blocked:
+        return {"status": "info", "message": "Wristband is not blocked.", "is_blocked": False}
+    wallet.is_blocked = False
+    db.commit()
+    return {"status": "success", "message": "Wristband UNBLOCKED. Payments are enabled again.", "is_blocked": False}
+
 
 # ==============================================================================
 # DEBT PAYMENT

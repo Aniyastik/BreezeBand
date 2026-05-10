@@ -29,6 +29,12 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
   const [debtPaying, setDebtPaying] = useState(false)
   const [debtMsg, setDebtMsg]       = useState({ text: '', ok: true })
 
+  // Block/Unblock state
+  const [blockLoading, setBlockLoading] = useState(false)
+  const [blockMsg, setBlockMsg]         = useState({ text: '', ok: true })
+  const [unblockPw, setUnblockPw]       = useState('')
+  const [showUnblockPw, setShowUnblockPw] = useState(false)
+
   // Auto-load profile from DB when uid is available (after refresh or re-login)
   useEffect(() => {
     if (propUid && !profile) {
@@ -299,6 +305,44 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
     }
   }
 
+  const handleBlock = async () => {
+    setBlockLoading(true)
+    setBlockMsg({ text: '', ok: true })
+    try {
+      const res = await fetch(`${API_BASE}/wallet/block/${profile.nfc_uid}`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Block failed')
+      setBlockMsg({ text: `🔒 ${data.message}`, ok: true })
+      setProfile(prev => ({ ...prev, is_blocked: true }))
+    } catch (err) {
+      setBlockMsg({ text: `❌ ${err.message}`, ok: false })
+    } finally {
+      setBlockLoading(false)
+    }
+  }
+
+  const handleUnblock = async () => {
+    setBlockLoading(true)
+    setBlockMsg({ text: '', ok: true })
+    try {
+      const res = await fetch(`${API_BASE}/wallet/unblock/${profile.nfc_uid}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nfc_uid: profile.nfc_uid, password: unblockPw })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Unblock failed')
+      setBlockMsg({ text: `🔓 ${data.message}`, ok: true })
+      setProfile(prev => ({ ...prev, is_blocked: false }))
+      setShowUnblockPw(false)
+      setUnblockPw('')
+    } catch (err) {
+      setBlockMsg({ text: `❌ ${err.message}`, ok: false })
+    } finally {
+      setBlockLoading(false)
+    }
+  }
+
   const hasDebt = (profile.debt ?? 0) > 0
 
   const timeSince = (dateStr) => {
@@ -444,6 +488,62 @@ export default function UserDashboard({ setIsAdmin, setUid, uid: propUid }) {
             <div className="stat-subtext" style={{marginTop: 4}}>
               {hasDebt ? 'Wristband locked — pay to unlock' : 'No debt — you\'re all clear'}
             </div>
+          </div>
+
+          {/* Wristband Security Card */}
+          <div className="stat-card" style={{
+            background: profile.is_blocked ? 'rgba(217,48,37,0.06)' : 'rgba(255,255,255,0.7)',
+            border: profile.is_blocked ? '1px solid rgba(217,48,37,0.2)' : 'none',
+          }}>
+            <div className="stat-label" style={{display:'flex',alignItems:'center',gap:6}}>
+              {profile.is_blocked ? '🔴 Wristband Blocked' : '🟢 Wristband Active'}
+            </div>
+            <div className="stat-subtext" style={{marginTop:4,marginBottom:12}}>
+              {profile.is_blocked
+                ? 'All payments are disabled. Unblock to resume.'
+                : 'Block your wristband if it\'s lost or stolen.'}
+            </div>
+
+            {profile.is_blocked ? (
+              <div>
+                {showUnblockPw ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    <input
+                      type="password"
+                      placeholder="Enter password to unblock"
+                      value={unblockPw}
+                      onChange={e => setUnblockPw(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleUnblock()}
+                      style={{width:'100%',padding:'10px 14px',border:'1px solid rgba(217,48,37,0.3)',borderRadius:8,fontSize:13,fontFamily:'Inter,sans-serif',outline:'none'}}
+                    />
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={handleUnblock} disabled={blockLoading}
+                        style={{flex:1,padding:'10px',border:'none',borderRadius:8,background:'#188038',color:'white',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'Inter,sans-serif',opacity:blockLoading?0.7:1}}>
+                        {blockLoading ? 'Unblocking...' : '🔓 Unblock'}
+                      </button>
+                      <button onClick={() => {setShowUnblockPw(false);setUnblockPw('');setBlockMsg({text:'',ok:true})}}
+                        style={{padding:'10px 14px',border:'1px solid #ddd',borderRadius:8,background:'white',fontSize:13,cursor:'pointer',fontFamily:'Inter,sans-serif'}}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowUnblockPw(true)}
+                    style={{width:'100%',padding:'10px',border:'none',borderRadius:8,background:'#188038',color:'white',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'Inter,sans-serif'}}>
+                    🔓 Unblock Wristband
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button onClick={handleBlock} disabled={blockLoading}
+                style={{width:'100%',padding:'10px',border:'2px solid #d93025',borderRadius:8,background:'rgba(217,48,37,0.05)',color:'#d93025',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'Inter,sans-serif',opacity:blockLoading?0.7:1}}>
+                {blockLoading ? 'Blocking...' : '🔒 Block Wristband'}
+              </button>
+            )}
+
+            {blockMsg.text && (
+              <div style={{marginTop:8,fontSize:12,fontWeight:600,color:blockMsg.ok?'#188038':'#d93025'}}>
+                {blockMsg.text}
+              </div>
+            )}
           </div>
         </div>
 
