@@ -671,23 +671,23 @@ def get_hardware_simulator():
 # ── AI Concierge ──────────────────────────────────────────────────────────────
 
 try:
-    from openai import OpenAI
+    from openai import AsyncOpenAI
 except ImportError:
-    OpenAI = None
+    AsyncOpenAI = None
 
 class RealLLM:
     """Connects to OpenAI to generate dynamic, luxury concierge responses."""
     
     @staticmethod
-    def generate_response(user_message: str, context: dict) -> str:
-        if not OpenAI:
+    async def generate_response(user_message: str, context: dict) -> str:
+        if not AsyncOpenAI:
             return "Error: OpenAI library is not installed."
             
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             return "Error: OPENAI_API_KEY is not set."
             
-        client = OpenAI(api_key=api_key)
+        client = AsyncOpenAI(api_key=api_key)
         
         user_age = context.get("age", 18)
         current_balance = context.get("balance", 0.0)
@@ -728,7 +728,7 @@ You are **Breeze**, the elite digital concierge for the world-class Sea Breeze R
 """
 
         try:
-            response = client.chat.completions.create(
+            response = await client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -739,7 +739,9 @@ You are **Breeze**, the elite digital concierge for the world-class Sea Breeze R
             )
             return response.choices[0].message.content
         except Exception as e:
-            return f"I'm sorry, I encountered an issue connecting to the concierge network: {str(e)}"
+            import traceback
+            error_details = f"{repr(e)} | Trace: {traceback.format_exc()}"
+            return f"I'm sorry, I encountered an issue connecting to the concierge network: {error_details}"
 
 class MockLLM:
     """Simulates an OpenAI LLM Call with Semantic Routing and Context Injection."""
@@ -833,7 +835,7 @@ class MockLLM:
 
 
 @app.post("/api/ai/chat")
-def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
+async def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
     """
     Context-Aware AI Concierge Endpoint.
     Demonstrates Age-stratified Context Injection & Semantic Routing.
@@ -900,7 +902,7 @@ def ai_chat(req: schemas.ChatRequest, db: Session = Depends(get_db)):
     
     # Route to LLM
     if os.environ.get("OPENAI_API_KEY"):
-        response_text = RealLLM.generate_response(req.message, context)
+        response_text = await RealLLM.generate_response(req.message, context)
     else:
         response_text = MockLLM.generate_response(system_prompt, req.message, context)
     
