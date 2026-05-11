@@ -755,7 +755,6 @@
     const amtEl   = document.getElementById('resultAmount');
     const detail  = document.getElementById('resultDetail');
     const balance = document.getElementById('resultBalance');
-    const remBal  = document.getElementById('remainingBal');
 
     if (type === 'success') {
       icon.className = 'result-icon success';
@@ -773,7 +772,9 @@
       amtEl.className = 'result-amount fail';
       amtEl.textContent = `${amount.toFixed(2)} AZN`;
       detail.textContent = errorMsg || 'Transaction failed';
-      balance.style.display = 'none';
+      if (balance) {
+        balance.style.display = 'none';
+      }
       if (navigator.vibrate) navigator.vibrate(300);
     }
     document.getElementById('overlay').classList.add('open');
